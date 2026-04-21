@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('https://cdn.fontshare.com/wf/XZLZXUOYUDRZWIHFHQFAYQXTBKFOCMOE/YQPHIICHNFGHSPYGD5QMHUJQTYTYFYWH/DVIJJMQP5IVNB6GXQKEVHP27BKYFHQY7.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('https://cdn.fontshare.com/wf/XZLZXUOYUDRZWIHFHQFAYQXTBKFOCMOE/YQPHIICHNFGHSPYGD5QMHUJQTYTYFYWH/EJG4YWDLX62WF2VPX7UIQX77DCTPHYRT.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('https://cdn.fontshare.com/wf/XZLZXUOYUDRZWIHFHQFAYQXTBKFOCMOE/YQPHIICHNFGHSPYGD5QMHUJQTYTYFYWH/GWJPHB2WUFVWECYC7EWRVPG3NFWMHBZF.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@theme {
+  --font-sans: 'Satoshi', system-ui, sans-serif;
+  --color-primary: #1132ee;
+  --color-primary-hover: #0e28be;
+  --color-surface: #ffffff;
+  --color-surface-variant: #f7f7f7;
+  --color-outline: #e6e6e6;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #4b5563;
+  --color-status-active: #22c55e;
+  --color-status-expiring: #f59e0b;
+  --color-status-expired: #ef4444;
+  --color-status-needs-auth: #f97316;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
