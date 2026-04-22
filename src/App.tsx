@@ -115,6 +115,13 @@ export default function App() {
     setSelectedIds(new Set());
   }, [selectedIds]);
 
+  const handleArchive = useCallback((recordId: string) => {
+    setRecords((prev) =>
+      prev.map((r) => (r.id === recordId ? { ...r, state: 'Archived' as AuthState } : r))
+    );
+    if (detailRecordId === recordId) setDetailRecordId(null);
+  }, [detailRecordId]);
+
   const handleAddNote = useCallback((recordId: string, text: string) => {
     const now = new Date().toISOString();
     setRecords((prev) =>
@@ -311,6 +318,7 @@ export default function App() {
               onStateChange={handleStateChange}
               onNotesClick={setNotesRecordId}
               onRowClick={(id) => setDetailRecordId((prev) => prev === id ? null : id)}
+              onArchive={handleArchive}
               activeRecordId={detailRecordId}
             />
             <BulkActions

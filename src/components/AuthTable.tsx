@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronUp, ExternalLink, Copy, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import CopyButton from './CopyButton';
 import type { AuthRecord, AuthState } from '../types';
 import { groupByPatient } from '../utils';
 import VisitsBar from './VisitsBar';
@@ -15,6 +16,7 @@ interface AuthTableProps {
   onStateChange: (id: string, state: AuthState) => void;
   onNotesClick: (recordId: string) => void;
   onRowClick: (recordId: string) => void;
+  onArchive: (recordId: string) => void;
   activeRecordId: string | null;
 }
 
@@ -44,6 +46,7 @@ export default function AuthTable({
   onStateChange,
   onNotesClick,
   onRowClick,
+  onArchive,
   activeRecordId,
 }: AuthTableProps) {
   const allSelected = records.length > 0 && selectedIds.size === records.length;
@@ -99,6 +102,7 @@ export default function AuthTable({
                 onStateChange={onStateChange}
                 onNotesClick={onNotesClick}
                 onRowClick={onRowClick}
+                onArchive={onArchive}
                 activeRecordId={activeRecordId}
               />
             );
@@ -121,6 +125,7 @@ function PatientGroupRows({
   onStateChange,
   onNotesClick,
   onRowClick,
+  onArchive,
   activeRecordId,
 }: {
   primary: AuthRecord;
@@ -134,6 +139,7 @@ function PatientGroupRows({
   onStateChange: (id: string, state: AuthState) => void;
   onNotesClick: (recordId: string) => void;
   onRowClick: (recordId: string) => void;
+  onArchive: (recordId: string) => void;
   activeRecordId: string | null;
 }) {
   return (
@@ -150,6 +156,7 @@ function PatientGroupRows({
         onStateChange={(s) => onStateChange(primary.id, s)}
         onNotesClick={() => onNotesClick(primary.id)}
         onRowClick={() => onRowClick(primary.id)}
+        onArchive={() => onArchive(primary.id)}
       />
       {isExpanded &&
         children.map((child) => (
@@ -166,6 +173,7 @@ function PatientGroupRows({
             onStateChange={(s) => onStateChange(child.id, s)}
             onNotesClick={() => onNotesClick(child.id)}
             onRowClick={() => onRowClick(child.id)}
+            onArchive={() => onArchive(child.id)}
           />
         ))}
     </>
@@ -184,6 +192,7 @@ function TableRow({
   onStateChange,
   onNotesClick,
   onRowClick,
+  onArchive,
 }: {
   record: AuthRecord;
   selected: boolean;
@@ -196,6 +205,7 @@ function TableRow({
   onStateChange: (s: AuthState) => void;
   onNotesClick: () => void;
   onRowClick: () => void;
+  onArchive: () => void;
 }) {
   const ExpandIcon = isExpanded ? ChevronUp : ChevronDown;
 
@@ -245,9 +255,7 @@ function TableRow({
             <a href="#" className="text-sm font-medium text-primary hover:underline">{record.patient.name}</a>
             <div className="flex items-center gap-1 text-xs text-text-primary">
               <span>DOB: {record.patient.dob}</span>
-              <button className="hover:text-primary transition-colors">
-                <Copy className="w-3 h-3" strokeWidth={1.5} />
-              </button>
+              <CopyButton text={record.patient.dob} />
             </div>
           </div>
         )}
@@ -258,9 +266,7 @@ function TableRow({
         {record.authNumber ? (
           <div className="flex items-center gap-1">
             <span className="text-sm text-text-primary">{record.authNumber}</span>
-            <button className="hover:text-primary transition-colors">
-              <Copy className="w-3 h-3 text-text-secondary" strokeWidth={1.5} />
-            </button>
+            <CopyButton text={record.authNumber} />
           </div>
         ) : (
           <span className="text-sm text-text-secondary">--</span>
@@ -368,7 +374,7 @@ function TableRow({
           <button className="p-1 rounded hover:bg-surface-variant transition-colors">
             <Pencil className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
           </button>
-          <button className="p-1 rounded hover:bg-red-50 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onArchive(); }} className="p-1 rounded hover:bg-red-50 transition-colors">
             <Trash2 className="w-4 h-4 text-text-secondary hover:text-status-expired" strokeWidth={1.5} />
           </button>
         </div>

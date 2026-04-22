@@ -31,8 +31,12 @@ export function countActiveFilters(f: Filters): number {
 
 export function applyFilters(records: AuthRecord[], filters: Filters): AuthRecord[] {
   return records.filter((r) => {
+    if (filters.state.length > 0) {
+      if (!filters.state.includes(r.state)) return false;
+    } else {
+      if (r.state === 'Archived') return false;
+    }
     if (filters.status.length > 0 && !filters.status.includes(r.status)) return false;
-    if (filters.state.length > 0 && !filters.state.includes(r.state)) return false;
     if (filters.payer.length > 0 && !filters.payer.includes(r.payer.name)) return false;
     if (filters.provider.length > 0 && !filters.provider.includes(r.provider)) return false;
     if (filters.facility.length > 0 && !filters.facility.includes(r.facility)) return false;

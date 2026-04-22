@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Copy, Pencil, CheckCircle, ArrowRight, ChevronDown, FileText, ArrowRightLeft, Edit3 } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import VisitsBar from './VisitsBar';
+import CopyButton from './CopyButton';
+import PortalBrowser from './PortalBrowser';
 
 interface AuthDetailPanelProps {
   record: AuthRecord;
@@ -10,6 +12,16 @@ interface AuthDetailPanelProps {
   onReassignVisit: (fromRecordId: string, toAuthNumber: string, type: 'completed' | 'scheduled', apptDateTime?: string) => void;
   onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
 }
+
+const PAYER_PORTAL_URLS: Record<string, string> = {
+  'BCBS': 'https://www.availity.com/',
+  'UHC': 'https://www.uhcprovider.com/',
+  'Aetna': 'https://www.availity.com/',
+  'Cigna': 'https://cignaforhcp.cigna.com/',
+  'Medicare': 'https://www.cms.gov/',
+  'Humana': 'https://www.availity.com/',
+  'Medicaid': 'https://www.medicaid.gov/',
+};
 
 const STATUS_DOT_COLORS: Record<string, string> = {
   'Active': 'bg-status-active',
@@ -74,8 +86,21 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     .map((r) => r.authNumber || '--');
   const authOptions = [...new Set(patientAuths)];
 
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+
+  const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
+
   return (
-    <div className="w-[440px] shrink-0 bg-white border-l border-outline flex flex-col h-full">
+    <div className="flex shrink-0 h-full">
+    {activeAction === 'portal' && (
+      <PortalBrowser
+        initialUrl={portalUrl}
+        title={`${record.payer.name} Portal`}
+        onClose={() => setActiveAction(null)}
+      />
+    )}
+
+    <div className="w-[440px] bg-white border-l border-outline flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
         <h2 className="text-xl font-medium text-text-primary">Authorization Details</h2>
@@ -103,16 +128,12 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
             {record.patient.mrn && (
               <div className="flex items-center gap-1">
                 <span className="text-xs text-text-primary">{record.patient.mrn}</span>
-                <button className="hover:text-primary transition-colors">
-                  <Copy className="w-3 h-3 text-text-secondary" strokeWidth={1.5} />
-                </button>
+                <CopyButton text={record.patient.mrn} />
               </div>
             )}
             <div className="flex items-center gap-1">
               <span className="text-xs text-text-primary">DOB: {record.patient.dob}</span>
-              <button className="hover:text-primary transition-colors">
-                <Copy className="w-3 h-3 text-text-secondary" strokeWidth={1.5} />
-              </button>
+              <CopyButton text={record.patient.dob} />
             </div>
           </div>
         </div>
@@ -326,6 +347,26 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
         </button>
       </div>
     </div>
+
+    {/* Side icon strip */}
+    <div className="flex flex-col gap-2 p-2 border-l border-outline bg-white">
+      {([
+        { id: 'approve', icon: Check, label: 'Approve' },
+        { id: 'assign', icon: User, label: 'Assign' },
+        { id: 'portal', icon: Globe, label: 'Payer Portal' },
+        { id: 'history', icon: History, label: 'Activity History' },
+      ] as const).map(({ id, icon: Icon, label }) => (
+        <button
+          key={id}
+          onClick={() => setActiveAction((prev) => prev === id ? null : id)}
+          title={label}
+          className={`p-1 rounded-full transition-colors ${activeAction === id ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:bg-surface-variant'}`}
+        >
+          <Icon className="w-5 h-5" strokeWidth={1.5} />
+        </button>
+      ))}
+    </div>
+    </div>
   );
 }
 
@@ -335,11 +376,7 @@ function DetailRow({ label, value, copyable }: { label: string; value: string; c
       <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs font-medium text-text-primary truncate">{value}</span>
-        {copyable && (
-          <button className="shrink-0 hover:text-primary transition-colors">
-            <Copy className="w-3 h-3 text-text-secondary" strokeWidth={1.5} />
-          </button>
-        )}
+        {copyable && <CopyButton text={value} />}
       </div>
     </div>
   );

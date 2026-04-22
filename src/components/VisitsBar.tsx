@@ -20,28 +20,26 @@ export default function VisitsBar({ authorized, completed, scheduled }: VisitsBa
     <div className="flex flex-col gap-1 w-full min-w-[100px]">
       <div className="flex items-center gap-1 text-[11px] leading-none">
         <span className={`font-medium ${exceeded ? 'text-status-expired' : 'text-text-primary'}`}>{completed} done</span>
-        <span className={`font-medium ${exceeded ? 'text-[#f6a3a2]' : 'text-status-expiring'}`}>{scheduled} sched</span>
+        <span className={`font-medium ${exceeded ? 'text-[#f6a3a2]' : 'text-[#a8c4e6]'}`}>{scheduled} sched</span>
         <span className="text-text-secondary">/ {authorized}</span>
       </div>
 
       {exceeded ? (
-        <div className="relative h-[8px] w-full">
-          {/* Full bar background (completed + scheduled) */}
-          <div className="absolute inset-y-0 left-0 rounded-tl-[4px] rounded-br-[4px] bg-[#f6a3a2] border border-[#e91916]" style={{ width: '100%' }} />
+        <div className="relative h-[10px] w-full rounded-full border border-[#e91916] bg-[#f6a3a2] overflow-hidden">
           {/* Completed portion */}
-          <div className="absolute inset-y-0 left-0 rounded-tl-[4px] rounded-br-[4px] bg-status-expired border border-[#e91916]" style={{ width: `${completedPct}%` }} />
+          <div className="absolute inset-y-0 left-0 bg-status-expired" style={{ width: `${completedPct}%` }} />
           {/* Authorized baseline (gray overlay stops here) */}
-          <div className="absolute inset-y-0 left-0 rounded-tl-[4px] rounded-br-[4px] bg-[#d9d9d9] border border-[#8c8c8c]" style={{ width: `${Math.min(authorizedPct, completedPct)}%` }} />
+          <div className="absolute inset-y-0 left-0 bg-[#d9d9d9]" style={{ width: `${Math.min(authorizedPct, completedPct)}%` }} />
         </div>
       ) : (
-        <div className="flex h-[6px] rounded-full overflow-hidden bg-[#e5e7eb] w-full">
+        <div className="relative h-[10px] w-full rounded-full border border-[#b0b0b0] bg-[#e0e0e0] overflow-hidden">
           <div
-            className="bg-primary rounded-l-full shrink-0"
+            className="absolute inset-y-0 left-0 bg-primary"
             style={{ width: `${Math.min(completedPct, 100)}%` }}
           />
           <div
-            className="bg-status-expiring shrink-0"
-            style={{ width: `${scheduledPct}%` }}
+            className="absolute inset-y-0 bg-[#a8c4e6]"
+            style={{ left: `${completedPct}%`, width: `${scheduledPct}%` }}
           />
         </div>
       )}
