@@ -1,17 +1,36 @@
-import { Download, ChevronDown } from 'lucide-react';
+import { Download, ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 interface ToolbarProps {
   activeTab: 'pre-certs' | 'referrals';
   onTabChange: (tab: 'pre-certs' | 'referrals') => void;
+  onCreateAuth: () => void;
+  filterOpen: boolean;
+  onToggleFilter: () => void;
+  activeFilterCount: number;
 }
 
-export default function Toolbar({ activeTab, onTabChange }: ToolbarProps) {
+export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOpen, onToggleFilter, activeFilterCount }: ToolbarProps) {
   return (
     <>
       <div className="flex items-center justify-between px-4 py-4 bg-white">
         <div className="flex flex-wrap gap-y-3 items-center flex-1">
-          <button className="inline-flex items-center gap-1 px-3.5 py-[3px] h-7 border border-primary rounded-full text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
+          <button
+            onClick={onToggleFilter}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-[3px] h-7 rounded-full text-sm font-medium transition-colors ${
+              filterOpen
+                ? 'bg-primary text-white hover:bg-primary-hover'
+                : 'border border-primary text-primary hover:bg-primary/5'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
             Filter
+            {activeFilterCount > 0 && (
+              <span className={`ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold ${
+                filterOpen ? 'bg-white text-primary' : 'bg-primary text-white'
+              }`}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
         <div className="flex items-center gap-4">
@@ -24,7 +43,10 @@ export default function Toolbar({ activeTab, onTabChange }: ToolbarProps) {
               <ChevronDown className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
-          <button className="inline-flex items-center gap-1 px-3.5 py-[3px] h-7 bg-primary rounded-full text-sm font-medium text-white hover:bg-primary-hover transition-colors">
+          <button
+            onClick={onCreateAuth}
+            className="inline-flex items-center gap-1 px-3.5 py-[3px] h-7 bg-primary rounded-full text-sm font-medium text-white hover:bg-primary-hover transition-colors"
+          >
             Create Authorization
           </button>
         </div>

@@ -1,10 +1,14 @@
 import { Menu, Search, BarChart2, BookOpen, ChevronDown } from 'lucide-react';
 
-export default function Header() {
+interface HeaderProps {
+  onToggleSidebar: () => void;
+}
+
+export default function Header({ onToggleSidebar }: HeaderProps) {
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-outline bg-white">
       <div className="flex items-center gap-3">
-        <button className="p-1 rounded-full hover:bg-surface-variant transition-colors">
+        <button onClick={onToggleSidebar} className="p-1 rounded-full hover:bg-surface-variant transition-colors">
           <Menu className="w-5 h-5 text-text-primary" strokeWidth={1.5} />
         </button>
         <h1 className="text-lg font-medium text-text-primary">Prior Authorizations</h1>

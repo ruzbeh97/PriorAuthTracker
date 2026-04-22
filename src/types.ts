@@ -9,6 +9,25 @@ export type AuthState =
   | 'Auth Denied'
   | 'Archived';
 
+export interface NoteEntry {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: string;
+}
+
+export type TimelineAction =
+  | { kind: 'appointment_moved'; apptDateTime: string; apptType: 'completed' | 'scheduled'; fromAuth: string; toAuth: string }
+  | { kind: 'detail_changed'; field: string; from: string; to: string }
+  | { kind: 'note_added'; text: string };
+
+export interface TimelineEntry {
+  id: string;
+  timestamp: string;
+  author: string;
+  action: TimelineAction;
+}
+
 export interface AuthRecord {
   id: string;
   patient: {
@@ -32,7 +51,8 @@ export interface AuthRecord {
   provider: string;
   assignedTo: string;
   tags: string[];
-  notes: string;
+  notes: NoteEntry[];
+  timeline?: TimelineEntry[];
   confidence?: 'Confirmed' | 'Pending' | 'Unverified';
 }
 

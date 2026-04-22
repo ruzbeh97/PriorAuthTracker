@@ -1,3 +1,9 @@
+import type { AuthRecord } from '../types';
+
+interface ScorecardsProps {
+  records: AuthRecord[];
+}
+
 interface ScorecardProps {
   title: string;
   value: number;
@@ -14,12 +20,16 @@ function Scorecard({ title, value, subtitle }: ScorecardProps) {
   );
 }
 
-export default function Scorecards() {
+export default function Scorecards({ records }: ScorecardsProps) {
+  const needsAuth = records.filter((r) => r.status === 'Needs Auth').length;
+  const expiringSoon = records.filter((r) => r.status === 'Expiring Soon').length;
+  const expired = records.filter((r) => r.status === 'Expired').length;
+
   return (
     <div className="flex gap-3 items-start pt-8 pb-4 px-4">
-      <Scorecard title="Needs Authorization" value={3} subtitle="Missing Authorizations" />
-      <Scorecard title="Expiring Soon" value={8} subtitle="<7 days or <2 visits" />
-      <Scorecard title="Expired" value={12} subtitle="Needs Authorization" />
+      <Scorecard title="Needs Authorization" value={needsAuth} subtitle="Missing Authorizations" />
+      <Scorecard title="Expiring Soon" value={expiringSoon} subtitle="<7 days or <2 visits" />
+      <Scorecard title="Expired" value={expired} subtitle="Needs Authorization" />
     </div>
   );
 }
