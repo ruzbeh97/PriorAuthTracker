@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History, ShieldPlus, Phone, IdCard, Paperclip, Calendar, Upload } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import VisitsBar from './VisitsBar';
 import CopyButton from './CopyButton';
@@ -11,6 +11,8 @@ interface AuthDetailPanelProps {
   onClose?: () => void;
   onReassignVisit: (fromRecordId: string, toAuthNumber: string, type: 'completed' | 'scheduled', apptDateTime?: string) => void;
   onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
+  tableCollapsed?: boolean;
+  onExpandTable?: () => void;
 }
 
 const PAYER_PORTAL_URLS: Record<string, string> = {
@@ -49,7 +51,7 @@ interface PendingReassignment {
   type: 'completed' | 'scheduled';
 }
 
-export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange }: AuthDetailPanelProps) {
+export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, tableCollapsed, onExpandTable }: AuthDetailPanelProps) {
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
 
@@ -89,17 +91,25 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   const authOptions = [...new Set(patientAuths)];
 
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [portalOpen, setPortalOpen] = useState(false);
 
   const hasPendingChanges = pendingReassignments.length > 0 || Object.keys(editFields).length > 0;
 
   const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
 
-  return (
-    <div className="flex shrink-0 h-full gap-3">
+  useEffect(() => {
+    if (portalOpen) {
+      setPortalCurrentUrl(portalUrl);
+      setPortalAddressValue(portalUrl);
+    }
+  }, [portalUrl, portalOpen]);
 
-    <div className={`bg-white border border-outline rounded-lg flex h-full overflow-hidden ${activeAction === 'portal' ? 'w-[880px]' : 'w-[440px]'}`}>
-      {activeAction === 'portal' && (
-        <div className="w-[440px] shrink-0 flex flex-col border-r border-outline">
+  return (
+    <div className={`flex h-full gap-3 ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
+
+    <div className={`bg-white border border-outline rounded-lg flex h-full overflow-hidden ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? 'w-[880px]' : 'w-[440px]'}`}>
+      {portalOpen && (
+        <div className={`${tableCollapsed ? 'flex-1 min-w-0' : 'w-[440px] shrink-0'} flex flex-col border-r border-outline`}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-outline shrink-0">
             <div className="flex-1 flex items-center bg-[#f5f5f5] border border-outline rounded-full overflow-hidden">
               <input
@@ -138,7 +148,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             <a href={portalCurrentUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-surface-variant transition-colors shrink-0" title="Open in new tab">
               <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
             </a>
-            <button onClick={() => setActiveAction(null)} className="p-1 rounded hover:bg-surface-variant transition-colors shrink-0" title="Close portal">
+            <button onClick={() => setPortalOpen(false)} className="p-1 rounded hover:bg-surface-variant transition-colors shrink-0" title="Close portal">
               <X className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
             </button>
           </div>
@@ -153,24 +163,35 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         </div>
       )}
 
-      <div className="w-[440px] shrink-0 flex flex-col overflow-hidden">
+      <div className={`${tableCollapsed ? 'flex-1 min-w-0' : 'w-[440px] shrink-0'} flex flex-col overflow-hidden`}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
-        <h2 className="text-xl font-medium text-text-primary">
-          {activeAction === 'assign' ? 'Patient Demographics' : 'Authorization Details'}
-        </h2>
+        <div className="flex items-center gap-3">
+          {tableCollapsed && (
+            <button
+              onClick={onExpandTable}
+              className="p-1 rounded hover:bg-surface-variant transition-colors"
+              title="Expand table"
+            >
+              <PanelRightClose className="w-5 h-5 text-text-secondary" />
+            </button>
+          )}
+          <h2 className="text-xl font-medium text-text-primary">
+            {activeAction === 'assign' ? 'Patient Demographics' : activeAction === 'attachments' ? 'Attachments' : 'Authorization Details'}
+          </h2>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              if (activeAction === 'portal') {
-                setActiveAction(null);
-              } else {
-                setPortalCurrentUrl(portalUrl);
-                setPortalAddressValue(portalUrl);
-                setActiveAction('portal');
-              }
+              setPortalOpen((prev) => {
+                if (!prev) {
+                  setPortalCurrentUrl(portalUrl);
+                  setPortalAddressValue(portalUrl);
+                }
+                return !prev;
+              });
             }}
-            className={`p-1.5 rounded-full transition-colors ${activeAction === 'portal' ? 'bg-primary/10 text-primary' : 'hover:bg-surface-variant'}`}
+            className={`p-1.5 rounded-full transition-colors ${portalOpen ? 'bg-primary/10 text-primary' : 'hover:bg-surface-variant'}`}
             title="Open payer portal"
           >
             <Globe className="w-5 h-5" />
@@ -212,6 +233,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
 
       {activeAction === 'assign' ? (
         <PatientDemographicsView record={record} />
+      ) : activeAction === 'attachments' ? (
+        <AttachmentsView record={record} />
       ) : (
       <div className="flex-1 overflow-y-auto py-4">
         {/* Patient header */}
@@ -429,9 +452,6 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
       {([
         { id: 'details', icon: CheckCircle, label: 'Authorization Details' },
         { id: 'assign', icon: User, label: 'Assign' },
-        { id: 'coverage', icon: ShieldPlus, label: 'Coverage' },
-        { id: 'contact', icon: Phone, label: 'Contact' },
-        { id: 'id-card', icon: IdCard, label: 'ID Card' },
         { id: 'attachments', icon: Paperclip, label: 'Attachments' },
       ] as const).map(({ id, icon: Icon, label }) => {
         const isActive = id === 'details' ? !activeAction || activeAction === 'details' : activeAction === id;
@@ -468,8 +488,22 @@ interface InsuranceFormData {
   priorAuthRequired: boolean;
 }
 
+interface CaseFormData {
+  caseName: string;
+  primaryInsurance: string;
+  secondaryInsurance: string;
+  tertiaryInsurance: string;
+  referringProvider: string;
+  referral: string;
+  supervisingProvider: string;
+  caseOwningProvider: string;
+  providerRequested: boolean;
+  caseNotes: string;
+}
+
 function PatientDemographicsView({ record }: { record: AuthRecord }) {
   const [insuranceDrawer, setInsuranceDrawer] = useState<{ open: boolean; initial?: InsuranceFormData }>({ open: false });
+  const [caseDrawer, setCaseDrawer] = useState<{ open: boolean; initial?: CaseFormData }>({ open: false });
   const patientName = record.patient.name;
   const mrn = record.patient.mrn || '---';
   const dob = record.patient.dob;
@@ -550,7 +584,25 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
                 <tr key={i} className="border-b border-outline">
                   <td className="py-3 px-2 sticky left-0 bg-white">
                     <div className="flex items-center gap-2">
-                      <Pencil className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary" strokeWidth={1.5} />
+                      <Pencil
+                        className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary"
+                        strokeWidth={1.5}
+                        onClick={() => setCaseDrawer({
+                          open: true,
+                          initial: {
+                            caseName: ep.caseName,
+                            primaryInsurance: ep.primaryInsurance === '--' ? '' : ep.primaryInsurance,
+                            secondaryInsurance: ep.secondaryInsurance === '--' ? '' : ep.secondaryInsurance,
+                            tertiaryInsurance: ep.tertiaryInsurance === '--' ? '' : ep.tertiaryInsurance,
+                            referringProvider: ep.renderingProvider,
+                            referral: '',
+                            supervisingProvider: '',
+                            caseOwningProvider: '',
+                            providerRequested: false,
+                            caseNotes: ep.caseNotes,
+                          }
+                        })}
+                      />
                       <FileText className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary" strokeWidth={1.5} />
                       <svg className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
                     </div>
@@ -572,7 +624,10 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
           </table>
         </div>
         <div className="px-6 mt-3">
-          <button className="p-1 rounded-full border border-outline hover:bg-surface-variant transition-colors">
+          <button
+            onClick={() => setCaseDrawer({ open: true })}
+            className="p-1 rounded-full border border-outline hover:bg-surface-variant transition-colors"
+          >
             <svg className="w-4 h-4 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
           </button>
         </div>
@@ -653,6 +708,176 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
           initialData={insuranceDrawer.initial}
         />
       )}
+      {caseDrawer.open && (
+        <NewCaseDrawer
+          onClose={() => setCaseDrawer({ open: false })}
+          initialData={caseDrawer.initial}
+        />
+      )}
+    </div>
+  );
+}
+
+interface Attachment {
+  id: string;
+  type: 'Patient' | 'Provider' | 'Payer' | 'Internal';
+  name: string;
+  documentDate: string;
+  uploadedBy: string;
+  tags: string[];
+}
+
+const ATTACHMENT_TYPE_STYLES: Record<Attachment['type'], string> = {
+  Patient: 'bg-[#e4f1d8] text-[#2f6a1b]',
+  Provider: 'bg-[#e0ebff] text-[#1b3f9a]',
+  Payer: 'bg-[#fde8c6] text-[#7a4c00]',
+  Internal: 'bg-[#e8e2fb] text-[#4b2c94]',
+};
+
+const MOCK_ATTACHMENTS: Attachment[] = Array.from({ length: 12 }, (_, i) => ({
+  id: `att-${i + 1}`,
+  type: 'Patient',
+  name: 'File Name.PDF',
+  documentDate: '02/02/2026',
+  uploadedBy: 'Jane Doe',
+  tags: [],
+}));
+
+function AttachmentsView({ record: _record }: { record: AuthRecord }) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tagValue, setTagValue] = useState('');
+
+  const attachments = MOCK_ATTACHMENTS;
+  const filtered = attachments.filter(a =>
+    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map(a => a.id)));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="px-6 py-5">
+        <div className="flex items-center gap-1.5 mb-3">
+          <h3 className="text-sm font-medium text-text-primary">Add Attachments</h3>
+          <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+        </div>
+        <div className="border border-dashed border-outline rounded-lg px-6 py-6 flex items-center justify-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center">
+            <Upload className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+          </div>
+          <span className="text-sm text-text-secondary">drop files here or</span>
+          <button className="text-sm font-medium text-primary hover:underline">Browse Files</button>
+        </div>
+      </div>
+
+      <div className="px-6 pb-5">
+        <fieldset className="border border-outline rounded px-3 pb-2 pt-1 relative">
+          <legend className="text-xs text-text-secondary px-1">Add New Tag</legend>
+          <div className="flex items-center">
+            <input
+              type="text"
+              value={tagValue}
+              onChange={e => setTagValue(e.target.value)}
+              className="flex-1 text-sm text-text-primary outline-none bg-transparent"
+            />
+            <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+          </div>
+        </fieldset>
+      </div>
+
+      <div className="px-6 pb-5">
+        <div className="flex items-center gap-1.5 mb-3">
+          <h3 className="text-sm font-medium text-text-primary">Attachments</h3>
+          <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <button
+            className={`p-1.5 rounded hover:bg-surface-variant transition-colors ${selectedIds.size === 0 ? 'opacity-50' : ''}`}
+            title="Download selected"
+          >
+            <Download className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+          </button>
+          <div className="relative flex-1 max-w-[240px] ml-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search"
+              className="w-full pl-8 pr-7 py-1.5 text-sm border border-outline rounded bg-white text-text-primary outline-none focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto border border-outline rounded-lg">
+          <table className="text-sm min-w-max w-full">
+            <thead className="bg-surface-variant">
+              <tr className="text-left text-xs font-medium text-text-secondary">
+                <th className="py-2.5 px-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded border-outline accent-text-primary"
+                  />
+                </th>
+                <th className="py-2.5 px-3">Type</th>
+                <th className="py-2.5 px-3">Name</th>
+                <th className="py-2.5 px-3">Document Date</th>
+                <th className="py-2.5 px-3">Uploaded By</th>
+                <th className="py-2.5 px-3">Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((att) => (
+                <tr key={att.id} className="border-t border-outline hover:bg-surface-variant/40">
+                  <td className="py-2.5 px-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(att.id)}
+                      onChange={() => toggleOne(att.id)}
+                      className="w-4 h-4 rounded border-outline accent-text-primary"
+                    />
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ATTACHMENT_TYPE_STYLES[att.type]}`}>
+                      {att.type}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{att.name}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{att.documentDate}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{att.uploadedBy}</td>
+                  <td className="py-2.5 px-3 text-text-secondary whitespace-nowrap">{att.tags.length === 0 ? '--' : att.tags.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -820,6 +1045,213 @@ function AddInsuranceDrawer({ onClose, initialData }: { onClose: () => void; ini
             className="w-full h-12 bg-primary rounded-lg text-base font-medium text-white hover:bg-primary-hover transition-colors"
           >
             Submit
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+const REFERRING_PROVIDERS = ['Dr. Sarah Johnson', 'Dr. Michael Chen', 'Dr. Emily Davis', 'Dr. Robert Wilson'];
+const SUPERVISING_PROVIDERS = ['Dr. Alan Brooks', 'Dr. Lisa Park', 'Dr. James Miller', 'Dr. Karen Lee'];
+const CASE_OWNING_PROVIDERS = ['Dr. Sarah Johnson', 'Dr. Michael Chen', 'Dr. Emily Davis', 'Dr. Robert Wilson'];
+const REFERRAL_OPTIONS = ['No referrals available'];
+
+function NewCaseDrawer({ onClose, initialData }: { onClose: () => void; initialData?: CaseFormData }) {
+  const isEdit = !!initialData;
+  const [caseName, setCaseName] = useState(initialData?.caseName ?? '');
+  const [primaryInsurance, setPrimaryInsurance] = useState(initialData?.primaryInsurance ?? '');
+  const [secondaryInsurance, setSecondaryInsurance] = useState(initialData?.secondaryInsurance ?? '');
+  const [tertiaryInsurance, setTertiaryInsurance] = useState(initialData?.tertiaryInsurance ?? '');
+  const [referringProvider, setReferringProvider] = useState(initialData?.referringProvider ?? '');
+  const [referral, setReferral] = useState(initialData?.referral ?? '');
+  const [supervisingProvider, setSupervisingProvider] = useState(initialData?.supervisingProvider ?? '');
+  const [caseOwningProvider, setCaseOwningProvider] = useState(initialData?.caseOwningProvider ?? '');
+  const [providerRequested, setProviderRequested] = useState(initialData?.providerRequested ?? false);
+  const [caseNotes, setCaseNotes] = useState(initialData?.caseNotes ?? '');
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative w-[480px] h-full bg-white shadow-xl animate-slide-in flex flex-col">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-outline">
+          <h2 className="text-lg font-semibold text-text-primary">{isEdit ? 'Edit Case' : 'New Case'}</h2>
+          <button onClick={onClose} className="p-1 rounded hover:bg-surface-variant transition-colors">
+            <svg className="w-5 h-5 text-text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+            <legend className="text-xs text-text-secondary px-1">Case Name</legend>
+            <input
+              type="text"
+              value={caseName}
+              onChange={e => setCaseName(e.target.value)}
+              className="w-full text-sm text-text-primary outline-none bg-transparent"
+            />
+          </fieldset>
+
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <h3 className="text-base font-semibold text-text-primary">Insurance</h3>
+              <button className="text-sm text-text-secondary opacity-50">+ Add Insurance</button>
+            </div>
+            <div className="space-y-4">
+              <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+                <legend className="text-xs text-text-secondary px-1">Primary Insurance</legend>
+                <div className="flex items-center">
+                  <select
+                    value={primaryInsurance}
+                    onChange={e => setPrimaryInsurance(e.target.value)}
+                    className="w-full text-sm text-text-primary outline-none bg-transparent appearance-none"
+                  >
+                    <option value="">Select primary insurance</option>
+                    {INSURANCE_COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+                </div>
+              </fieldset>
+
+              <fieldset className="border border-dashed border-outline rounded px-3 pb-3 pt-1">
+                <legend className="text-xs text-text-secondary px-1">Secondary Insurance</legend>
+                <div className="flex items-center">
+                  <select
+                    value={secondaryInsurance}
+                    onChange={e => setSecondaryInsurance(e.target.value)}
+                    className="w-full text-sm text-text-secondary outline-none bg-transparent appearance-none"
+                  >
+                    <option value="">Select secondary insurance</option>
+                    {INSURANCE_COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+                </div>
+              </fieldset>
+
+              <fieldset className="border border-dashed border-outline rounded px-3 pb-3 pt-1">
+                <legend className="text-xs text-text-secondary px-1">Tertiary Insurance</legend>
+                <div className="flex items-center">
+                  <select
+                    value={tertiaryInsurance}
+                    onChange={e => setTertiaryInsurance(e.target.value)}
+                    className="w-full text-sm text-text-secondary outline-none bg-transparent appearance-none"
+                  >
+                    <option value="">Select tertiary insurance</option>
+                    {INSURANCE_COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+                </div>
+              </fieldset>
+
+              <div className="flex items-center gap-2">
+                <fieldset className="border border-outline rounded px-3 pb-3 pt-1 flex-1">
+                  <legend className="text-xs text-text-secondary px-1">Select a referring provider</legend>
+                  <div className="flex items-center">
+                    <select
+                      value={referringProvider}
+                      onChange={e => setReferringProvider(e.target.value)}
+                      className="w-full text-sm text-text-primary outline-none bg-transparent appearance-none"
+                    >
+                      <option value="">Select a referring provider</option>
+                      {REFERRING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+                  </div>
+                </fieldset>
+                <button className="p-2 border border-outline rounded hover:bg-surface-variant transition-colors shrink-0">
+                  <IdCard className="w-5 h-5 text-text-secondary" />
+                </button>
+              </div>
+
+              <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+                <legend className="text-xs text-text-secondary px-1">Referral</legend>
+                <div className="flex items-center">
+                  <select
+                    value={referral}
+                    onChange={e => setReferral(e.target.value)}
+                    className="w-full text-sm text-text-secondary outline-none bg-transparent appearance-none"
+                  >
+                    <option value="">No referrals available</option>
+                    {REFERRAL_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+                </div>
+              </fieldset>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-text-primary mb-3">Supervising Provider</h3>
+            <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+              <legend className="text-xs text-text-secondary px-1 sr-only">Supervising provider</legend>
+              <div className="flex items-center">
+                <select
+                  value={supervisingProvider}
+                  onChange={e => setSupervisingProvider(e.target.value)}
+                  className="w-full text-sm text-text-primary outline-none bg-transparent appearance-none"
+                >
+                  <option value="">Select supervising provider</option>
+                  {SUPERVISING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+              </div>
+            </fieldset>
+          </div>
+
+          <div>
+            <h3 className="text-base font-semibold text-text-primary mb-3">Case Owning Provider</h3>
+            <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+              <legend className="text-xs text-text-secondary px-1 sr-only">Case owning provider</legend>
+              <div className="flex items-center">
+                <select
+                  value={caseOwningProvider}
+                  onChange={e => setCaseOwningProvider(e.target.value)}
+                  className="w-full text-sm text-text-primary outline-none bg-transparent appearance-none"
+                >
+                  <option value="">Select case owning provider</option>
+                  {CASE_OWNING_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-text-secondary shrink-0" />
+              </div>
+            </fieldset>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={providerRequested}
+              onChange={e => setProviderRequested(e.target.checked)}
+              className="w-4 h-4 rounded border-outline text-primary accent-text-primary"
+            />
+            <span className="text-sm text-text-primary">Was a provider specifically requested?</span>
+          </label>
+
+          <div>
+            <h3 className="text-base font-semibold text-text-primary mb-3">Notes</h3>
+            <fieldset className="border border-outline rounded px-3 pb-3 pt-1">
+              <legend className="text-xs text-text-secondary px-1">Case notes</legend>
+              <textarea
+                value={caseNotes}
+                onChange={e => setCaseNotes(e.target.value)}
+                rows={3}
+                className="w-full text-sm text-text-primary outline-none bg-transparent resize-y"
+              />
+            </fieldset>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 px-6 py-4 border-t border-outline">
+          <button
+            className="px-5 py-2 text-sm font-medium rounded bg-surface-variant text-text-secondary opacity-60"
+          >
+            {isEdit ? 'Save' : 'Create'}
+          </button>
+          <button
+            onClick={onClose}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Cancel
           </button>
         </div>
       </div>

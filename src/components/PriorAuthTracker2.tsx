@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, CheckCircle, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, Maximize2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, PanelLeftClose } from 'lucide-react';
 import { mockAuthRecords } from '../data';
 import { groupByPatient } from '../utils';
 import FilterDropdown from './FilterDropdown';
@@ -416,6 +416,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   const [activeScorecard, setActiveScorecard] = useState<'needs-auth' | 'expiring-soon' | 'expired' | null>(null);
   const [assigneeDropdownId, setAssigneeDropdownId] = useState<string | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [tableCollapsed, setTableCollapsed] = useState(false);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -457,6 +458,20 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
     onSelectedRecordChange?.(selectedRecord, selectedRecordIndex + 1, flatRecordIds.length);
   }, [selectedRecord, selectedRecordIndex, flatRecordIds.length, onSelectedRecordChange]);
 
+  useEffect(() => {
+    if (!selectedRecord) return;
+    const patientKey = `${selectedRecord.patient.name}|${selectedRecord.patient.dob}`;
+    const group = groups.find((g) => g.patientKey === patientKey);
+    if (group && group.children.some((c) => c.id === selectedRecord.id)) {
+      setExpandedPatients((prev) => {
+        if (prev.has(patientKey)) return prev;
+        const next = new Set(prev);
+        next.add(patientKey);
+        return next;
+      });
+    }
+  }, [selectedRecord, groups]);
+
   const navigateRecord = useCallback((direction: 'prev' | 'next') => {
     if (selectedRecordIndex < 0) return;
     const newIndex = direction === 'prev' ? selectedRecordIndex - 1 : selectedRecordIndex + 1;
@@ -470,7 +485,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   }, [registerNavigate, navigateRecord]);
 
   useEffect(() => {
-    registerClearSelection?.(() => setSelectedRecordId(null));
+    registerClearSelection?.(() => { setSelectedRecordId(null); setTableCollapsed(false); });
   }, [registerClearSelection]);
 
   const handleToggleSelect = useCallback((id: string) => {
@@ -599,16 +614,16 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
 
   return (
     <main className="flex flex-1 min-w-0 min-h-0 bg-surface-variant relative overflow-hidden p-4 gap-3">
-      <div className="flex flex-col flex-1 min-h-0 min-w-0 bg-white rounded-lg overflow-hidden relative">
+      <div className={`flex flex-col min-h-0 min-w-0 bg-white rounded-lg overflow-hidden relative transition-all duration-200 ${isDetailOpen ? (tableCollapsed ? 'w-0 opacity-0 pointer-events-none p-0 border-0' : 'flex-1') : 'flex-1'}`}>
       {isDetailOpen && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-outline shrink-0">
           <span className="text-base font-medium text-text-primary">Authorization Table</span>
           <button
-            onClick={() => setSelectedRecordId(null)}
+            onClick={() => setTableCollapsed(true)}
             className="p-1 rounded hover:bg-surface-variant transition-colors"
-            title="Expand table"
+            title="Collapse table"
           >
-            <Maximize2 className="w-4 h-4 text-text-secondary" />
+            <PanelLeftClose className="w-4 h-4 text-text-secondary" />
           </button>
         </div>
       )}
@@ -907,22 +922,20 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
       )}
 
       {/* Data Table */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex-1 min-w-0 overflow-x-auto overflow-y-auto">
+      <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-auto">
           <table className="w-full border-collapse min-w-max">
             <thead className="sticky top-0 z-10">
               <tr>
                 <th className="bg-surface-variant border-b border-outline w-11 h-9" />
-                <th className="bg-surface-variant border-b border-outline h-9 px-2">
-                  <div className="flex items-center justify-end">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      ref={(el) => { if (el) el.indeterminate = someSelected; }}
-                      onChange={handleToggleSelectAll}
-                      className="w-[18px] h-[18px] rounded-sm border-2 border-[#666] accent-primary cursor-pointer"
-                    />
-                  </div>
+                <th className="bg-surface-variant border-b border-outline h-9 pl-2 pr-1 text-left">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                    onChange={handleToggleSelectAll}
+                    className="w-[18px] h-[18px] rounded-sm border-2 border-[#666] accent-primary cursor-pointer"
+                  />
                 </th>
                 {TABLE_COLUMNS.map((col) => (
                   <th
@@ -953,11 +966,14 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                   const isChildRow = isChild && hasMultiple && isExpanded;
                   const rowBg = isChildRow ? 'bg-surface-variant' : 'bg-white';
 
+                  const isSelected = selectedRecordId === record.id;
+
                   return (
                     <tr
                       key={record.id}
+                      ref={isSelected ? (el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : undefined}
                       onClick={() => setSelectedRecordId((prev) => prev === record.id ? null : record.id)}
-                      className={`${rowBg} border-b border-outline h-12 hover:bg-[#f0f4ff] transition-colors cursor-pointer ${selectedRecordId === record.id ? 'bg-[#f0f4ff]' : ''}`}
+                      className={`${rowBg} border-b border-outline h-12 hover:bg-[#f0f4ff] transition-colors cursor-pointer ${isSelected ? 'bg-[#f0f4ff]!' : ''}`}
                     >
                       {/* Expand */}
                       <td className="px-2 py-4 w-11" onClick={(e) => e.stopPropagation()}>
@@ -976,7 +992,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                       </td>
 
                       {/* Checkbox */}
-                      <td className="px-2 py-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="pl-2 pr-1 py-4" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(record.id)}
@@ -986,7 +1002,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                       </td>
 
                       {/* Patient */}
-                      <td className="px-4 py-4 w-[145px]">
+                      <td className="pl-2 pr-4 py-4 w-[145px]">
                         <span className="text-sm text-[#1566b7] truncate block">{record.patient.name}</span>
                       </td>
 
@@ -1102,9 +1118,11 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
         <AuthDetailPanel
           record={selectedRecord}
           allRecords={records}
-          onClose={() => setSelectedRecordId(null)}
+          onClose={() => { setSelectedRecordId(null); setTableCollapsed(false); }}
           onReassignVisit={handleReassignVisit}
           onDetailChange={handleDetailChange}
+          tableCollapsed={tableCollapsed}
+          onExpandTable={() => setTableCollapsed(false)}
         />
       )}
     </main>
