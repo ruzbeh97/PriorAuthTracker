@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Scorecards from './components/Scorecards';
 import Toolbar from './components/Toolbar';
-import FilterPanel, { applyFilters, countActiveFilters, EMPTY_FILTERS } from './components/FilterPanel';
+import { applyFilters, countActiveFilters, EMPTY_FILTERS } from './components/FilterPanel';
 import type { Filters } from './components/FilterPanel';
 import AuthTable from './components/AuthTable';
 import BulkActions from './components/BulkActions';
@@ -12,6 +12,7 @@ import NotesModal from './components/NotesModal';
 import CreateAuthDrawer from './components/CreateAuthDrawer';
 import type { CreateAuthForm } from './components/CreateAuthDrawer';
 import AuthDetailPanel from './components/AuthDetailPanel';
+import PriorAuthTracker2 from './components/PriorAuthTracker2';
 import { mockAuthRecords } from './data';
 import type { AuthRecord, AuthState, TimelineEntry } from './types';
 
@@ -28,6 +29,10 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activePage, setActivePage] = useState('Prior Auth Tracker 1');
+  const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
+  const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
+  const clearSelectionRef = useRef<(() => void) | null>(null);
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
 
@@ -286,10 +291,25 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-surface-variant overflow-hidden">
-      {sidebarOpen && <Sidebar />}
+      <Sidebar collapsed={!sidebarOpen} activePage={activePage} onPageChange={setActivePage} />
       <div className="flex flex-col flex-1 min-w-0 h-full">
-        <Header onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+        <Header
+          onToggleSidebar={() => setSidebarOpen((o) => !o)}
+          detailHeaderInfo={activePage === 'Prior Auth Tracker 2' ? detailHeaderInfo : null}
+          onNavigateRecord={(dir) => navigateRecordRef.current?.(dir)}
+          onBackToTable={() => clearSelectionRef.current?.()}
+        />
         <div className="flex flex-1 min-h-0">
+          {activePage === 'Prior Auth Tracker 2' ? (
+            <PriorAuthTracker2
+              onSelectedRecordChange={(record, index, total) => {
+                setDetailHeaderInfo(record ? { patientName: record.patient.name, authNumber: record.authNumber || '---', index, total } : null);
+              }}
+              registerNavigate={(fn) => { navigateRecordRef.current = fn; }}
+              registerClearSelection={(fn) => { clearSelectionRef.current = fn; }}
+            />
+          ) : (
+          <>
           <main className="flex flex-col flex-1 min-w-0 min-h-0 bg-white relative overflow-hidden transition-all duration-200">
             <Scorecards records={filteredRecords} />
             <Toolbar
@@ -299,15 +319,10 @@ export default function App() {
               filterOpen={filterOpen}
               onToggleFilter={() => setFilterOpen((o) => !o)}
               activeFilterCount={activeFilterCount}
+              records={records}
+              filters={filters}
+              onFiltersChange={(f) => { setFilters(f); setPage(1); }}
             />
-            {filterOpen && (
-              <FilterPanel
-                records={records}
-                filters={filters}
-                onChange={(f) => { setFilters(f); setPage(1); }}
-                onClose={() => setFilterOpen(false)}
-              />
-            )}
             <AuthTable
               records={paginatedRecords}
               selectedIds={selectedIds}
@@ -360,6 +375,8 @@ export default function App() {
               onReassignVisit={handleReassignVisit}
               onDetailChange={handleDetailChange}
             />
+          )}
+          </>
           )}
         </div>
       </div>

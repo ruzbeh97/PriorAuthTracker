@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Pencil, CheckCircle, ArrowRight, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import VisitsBar from './VisitsBar';
 import CopyButton from './CopyButton';
-import PortalBrowser from './PortalBrowser';
 
 interface AuthDetailPanelProps {
   record: AuthRecord;
@@ -58,6 +57,8 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
   const [pendingReassignments, setPendingReassignments] = useState<PendingReassignment[]>([]);
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
+  const [portalCurrentUrl, setPortalCurrentUrl] = useState('');
+  const [portalAddressValue, setPortalAddressValue] = useState('');
   const initializedForRef = useRef<string | null>(null);
 
   if (initializedForRef.current !== record.id) {
@@ -88,28 +89,121 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
 
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
+  const hasPendingChanges = pendingReassignments.length > 0 || Object.keys(editFields).length > 0;
+
   const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
 
   return (
-    <div className="flex shrink-0 h-full">
-    {activeAction === 'portal' && (
-      <PortalBrowser
-        initialUrl={portalUrl}
-        title={`${record.payer.name} Portal`}
-        onClose={() => setActiveAction(null)}
-      />
-    )}
+    <div className="flex shrink-0 h-full gap-3">
 
-    <div className="w-[440px] bg-white border-l border-outline flex flex-col h-full">
+    <div className={`bg-white border border-outline rounded-lg flex h-full overflow-hidden ${activeAction === 'portal' ? 'w-[880px]' : 'w-[440px]'}`}>
+      {activeAction === 'portal' && (
+        <div className="w-[440px] shrink-0 flex flex-col border-r border-outline">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-outline shrink-0">
+            <div className="flex-1 flex items-center bg-[#f5f5f5] border border-outline rounded-full overflow-hidden">
+              <input
+                type="text"
+                value={portalAddressValue}
+                onChange={(e) => setPortalAddressValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    let url = portalAddressValue.trim();
+                    if (!url) return;
+                    if (!/^https?:\/\//i.test(url)) {
+                      url = /^[a-z0-9-]+\.[a-z]{2,}/i.test(url) ? `https://${url}` : `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+                    }
+                    setPortalCurrentUrl(url);
+                    setPortalAddressValue(url);
+                  }
+                }}
+                placeholder="Search or enter URL"
+                className="flex-1 min-w-0 text-xs text-text-primary px-3 py-1.5 focus:outline-none bg-transparent"
+              />
+              <button
+                onClick={() => {
+                  let url = portalAddressValue.trim();
+                  if (!url) return;
+                  if (!/^https?:\/\//i.test(url)) {
+                    url = /^[a-z0-9-]+\.[a-z]{2,}/i.test(url) ? `https://${url}` : `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+                  }
+                  setPortalCurrentUrl(url);
+                  setPortalAddressValue(url);
+                }}
+                className="p-1.5 hover:bg-surface-variant transition-colors shrink-0"
+              >
+                <ArrowRight className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+              </button>
+            </div>
+            <a href={portalCurrentUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-surface-variant transition-colors shrink-0" title="Open in new tab">
+              <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+            </a>
+            <button onClick={() => setActiveAction(null)} className="p-1 rounded hover:bg-surface-variant transition-colors shrink-0" title="Close portal">
+              <X className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+            </button>
+          </div>
+          <div className="flex-1 bg-[#f5f5f5]">
+            <iframe
+              src={portalCurrentUrl}
+              title={`${record.payer.name} Portal`}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="w-[440px] shrink-0 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
         <h2 className="text-xl font-medium text-text-primary">Authorization Details</h2>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-full border border-outline hover:bg-surface-variant transition-colors"
-        >
-          <X className="w-6 h-6 text-text-secondary" strokeWidth={1.5} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (activeAction === 'portal') {
+                setActiveAction(null);
+              } else {
+                setPortalCurrentUrl(portalUrl);
+                setPortalAddressValue(portalUrl);
+                setActiveAction('portal');
+              }
+            }}
+            className={`p-1.5 rounded-full transition-colors ${activeAction === 'portal' ? 'bg-primary/10 text-primary' : 'hover:bg-surface-variant'}`}
+            title="Open payer portal"
+          >
+            <Globe className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              if (hasPendingChanges) {
+                const allAppts = [...completedAppts, ...scheduledAppts];
+                pendingReassignments.forEach((p) => {
+                  const appt = allAppts.find((a) => a.id === p.apptId);
+                  onReassignVisit(record.id, p.toAuthNumber, p.type, appt?.dateTime);
+                });
+                const reassignedIds = new Set(pendingReassignments.map((p) => p.apptId));
+                setCompletedAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
+                setScheduledAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
+                setPendingReassignments([]);
+
+                Object.entries(editFields).forEach(([field, value]) => {
+                  const originalValue = (record as Record<string, unknown>)[field] as string ?? '';
+                  if (value !== originalValue) {
+                    onDetailChange(record.id, field, String(originalValue), value);
+                  }
+                });
+                setEditing(false);
+                setEditFields({});
+              }
+            }}
+            className={`h-8 px-4 rounded-full text-sm font-medium transition-colors ${
+              hasPendingChanges
+                ? 'bg-primary border border-primary text-white hover:bg-primary-hover'
+                : 'border border-outline text-text-secondary hover:bg-surface-variant'
+            }`}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {/* Scrollable body */}
@@ -320,36 +414,11 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
 
         <div className="h-6" />
       </div>
-
-      {/* Footer */}
-      <div className="flex items-center gap-2 px-6 py-5 border-t border-outline shrink-0">
-        <button
-          onClick={() => {
-            const allAppts = [...completedAppts, ...scheduledAppts];
-            pendingReassignments.forEach((p) => {
-              const appt = allAppts.find((a) => a.id === p.apptId);
-              onReassignVisit(record.id, p.toAuthNumber, p.type, appt?.dateTime);
-            });
-            const reassignedIds = new Set(pendingReassignments.map((p) => p.apptId));
-            setCompletedAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
-            setScheduledAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
-            setPendingReassignments([]);
-          }}
-          className="px-4 py-[7px] h-9 bg-primary rounded-full text-sm font-medium text-white hover:bg-primary-hover transition-colors"
-        >
-          Save
-        </button>
-        <button
-          onClick={onClose}
-          className="px-4 py-[7px] h-9 rounded-full border border-primary text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
+    </div>
     </div>
 
     {/* Side icon strip */}
-    <div className="flex flex-col gap-2 p-2 border-l border-outline bg-white">
+    <div className="flex flex-col gap-2 p-2 border border-outline rounded-lg bg-white">
       {([
         { id: 'approve', icon: Check, label: 'Approve' },
         { id: 'assign', icon: User, label: 'Assign' },
@@ -358,7 +427,13 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
       ] as const).map(({ id, icon: Icon, label }) => (
         <button
           key={id}
-          onClick={() => setActiveAction((prev) => prev === id ? null : id)}
+          onClick={() => {
+            if (id === 'portal' && activeAction !== 'portal') {
+              setPortalCurrentUrl(portalUrl);
+              setPortalAddressValue(portalUrl);
+            }
+            setActiveAction((prev) => prev === id ? null : id);
+          }}
           title={label}
           className={`p-1 rounded-full transition-colors ${activeAction === id ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:bg-surface-variant'}`}
         >

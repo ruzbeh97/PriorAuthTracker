@@ -1,4 +1,7 @@
 import { Download, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import type { AuthRecord } from '../types';
+import type { Filters } from './FilterPanel';
+import FilterDropdown from './FilterDropdown';
 
 interface ToolbarProps {
   activeTab: 'pre-certs' | 'referrals';
@@ -7,31 +10,41 @@ interface ToolbarProps {
   filterOpen: boolean;
   onToggleFilter: () => void;
   activeFilterCount: number;
+  records: AuthRecord[];
+  filters: Filters;
+  onFiltersChange: (filters: Filters) => void;
 }
 
-export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOpen, onToggleFilter, activeFilterCount }: ToolbarProps) {
+export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOpen, onToggleFilter, activeFilterCount, records, filters, onFiltersChange }: ToolbarProps) {
   return (
     <>
       <div className="flex items-center justify-between px-4 py-4 bg-white">
         <div className="flex flex-wrap gap-y-3 items-center flex-1">
-          <button
-            onClick={onToggleFilter}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-[3px] h-7 rounded-full text-sm font-medium transition-colors ${
-              filterOpen
-                ? 'bg-primary text-white hover:bg-primary-hover'
-                : 'border border-primary text-primary hover:bg-primary/5'
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
-            Filter
-            {activeFilterCount > 0 && (
-              <span className={`ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold ${
-                filterOpen ? 'bg-white text-primary' : 'bg-primary text-white'
-              }`}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={onToggleFilter}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-[3px] h-7 rounded-full text-sm font-medium transition-colors ${
+                filterOpen || activeFilterCount > 0
+                  ? 'bg-primary text-white hover:bg-primary-hover'
+                  : 'border border-primary text-primary hover:bg-primary/5'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold bg-white text-primary">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <FilterDropdown
+              open={filterOpen}
+              onClose={onToggleFilter}
+              records={records}
+              filters={filters}
+              onChange={onFiltersChange}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center">
