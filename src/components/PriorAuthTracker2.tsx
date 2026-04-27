@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, CheckCircle, Filter, SlidersHorizontal, Downloa
 import { mockAuthRecords } from '../data';
 import { groupByPatient } from '../utils';
 import FilterDropdown from './FilterDropdown';
-import { applyFilters, EMPTY_FILTERS, isFiltersEmpty, countActiveFilters } from './FilterPanel';
+import { applyFilters, EMPTY_FILTERS, isFiltersEmpty } from './FilterPanel';
 import type { Filters } from './FilterPanel';
 import BulkActions from './BulkActions';
 import AuthDetailPanel from './AuthDetailPanel';

@@ -8,7 +8,7 @@ import CopyButton from './CopyButton';
 interface AuthDetailPanelProps {
   record: AuthRecord;
   allRecords: AuthRecord[];
-  onClose: () => void;
+  onClose?: () => void;
   onReassignVisit: (fromRecordId: string, toAuthNumber: string, type: 'completed' | 'scheduled', apptDateTime?: string) => void;
   onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
 }
@@ -49,7 +49,7 @@ interface PendingReassignment {
   type: 'completed' | 'scheduled';
 }
 
-export default function AuthDetailPanel({ record, allRecords, onClose, onReassignVisit, onDetailChange }: AuthDetailPanelProps) {
+export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange }: AuthDetailPanelProps) {
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
 
@@ -189,9 +189,10 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                 setPendingReassignments([]);
 
                 Object.entries(editFields).forEach(([field, value]) => {
-                  const originalValue = (record as Record<string, unknown>)[field] as string ?? '';
+                  const rec = record as unknown as Record<string, unknown>;
+                  const originalValue = String(rec[field] ?? '');
                   if (value !== originalValue) {
-                    onDetailChange(record.id, field, String(originalValue), value);
+                    onDetailChange(record.id, field, originalValue, value);
                   }
                 });
                 setEditing(false);
