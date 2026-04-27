@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, Check, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import VisitsBar from './VisitsBar';
 import CopyButton from './CopyButton';
