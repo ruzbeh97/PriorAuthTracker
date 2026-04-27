@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, Calendar, Check, User, Globe, History } from 'lucide-react';
-import PortalBrowser from './PortalBrowser';
+import { X, ChevronDown, Calendar } from 'lucide-react';
 
 interface CreateAuthForm {
   patient: string;
@@ -18,16 +17,6 @@ interface CreateAuthForm {
   provider: string;
   facility: string;
 }
-
-const PAYER_PORTAL_URLS: Record<string, string> = {
-  'BCBS': 'https://www.availity.com/',
-  'UHC': 'https://www.uhcprovider.com/',
-  'Aetna': 'https://www.availity.com/',
-  'Cigna': 'https://cignaforhcp.cigna.com/',
-  'Medicare': 'https://www.cms.gov/',
-  'Humana': 'https://www.availity.com/',
-  'Medicaid': 'https://www.medicaid.gov/',
-};
 
 const INITIAL_FORM: CreateAuthForm = {
   patient: '',
@@ -56,7 +45,6 @@ export type { CreateAuthForm };
 
 export default function CreateAuthDrawer({ open, onClose, onCreate }: CreateAuthDrawerProps) {
   const [form, setForm] = useState<CreateAuthForm>(INITIAL_FORM);
-  const [activeAction, setActiveAction] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) setForm(INITIAL_FORM);
@@ -80,21 +68,9 @@ export default function CreateAuthDrawer({ open, onClose, onCreate }: CreateAuth
 
   if (!open) return null;
 
-  const portalUrl = form.payer
-    ? (PAYER_PORTAL_URLS[form.payer] || `https://www.google.com/search?q=${encodeURIComponent(form.payer + ' provider portal')}`)
-    : 'https://www.availity.com/';
-
   return (
-    <div className="flex shrink-0 h-full">
-    {activeAction === 'portal' && (
-      <PortalBrowser
-        initialUrl={portalUrl}
-        title={form.payer ? `${form.payer} Portal` : 'Payer Portal'}
-        onClose={() => setActiveAction(null)}
-      />
-    )}
-
-    <div className="w-[440px] bg-white border-l border-outline flex flex-col h-full">
+    <div className="flex shrink-0 h-full gap-3">
+    <div className="w-[440px] bg-white border border-outline rounded-lg flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
           <h2 className="text-xl font-medium text-text-primary">Create Prior Authorization</h2>
@@ -204,24 +180,6 @@ export default function CreateAuthDrawer({ open, onClose, onCreate }: CreateAuth
       </div>
     </div>
 
-    {/* Side icon strip */}
-    <div className="flex flex-col gap-2 p-2 border-l border-outline bg-white">
-      {([
-        { id: 'approve', icon: Check, label: 'Approve' },
-        { id: 'assign', icon: User, label: 'Assign' },
-        { id: 'portal', icon: Globe, label: 'Payer Portal' },
-        { id: 'history', icon: History, label: 'Activity History' },
-      ] as const).map(({ id, icon: Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => setActiveAction((prev) => prev === id ? null : id)}
-          title={label}
-          className={`p-1 rounded-full transition-colors ${activeAction === id ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:bg-surface-variant'}`}
-        >
-          <Icon className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-      ))}
-    </div>
     </div>
   );
 }

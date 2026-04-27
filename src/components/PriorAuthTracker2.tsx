@@ -8,6 +8,8 @@ import { applyFilters, EMPTY_FILTERS, isFiltersEmpty } from './FilterPanel';
 import type { Filters } from './FilterPanel';
 import BulkActions from './BulkActions';
 import AuthDetailPanel from './AuthDetailPanel';
+import CreateAuthDrawer from './CreateAuthDrawer';
+import type { CreateAuthForm } from './CreateAuthDrawer';
 import type { AuthRecord, AuthState, TimelineEntry } from '../types';
 import type { PatientGroup } from '../utils';
 
@@ -417,6 +419,31 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   const [assigneeDropdownId, setAssigneeDropdownId] = useState<string | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [tableCollapsed, setTableCollapsed] = useState(false);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+
+  const handleCreateAuth = useCallback((form: CreateAuthForm) => {
+    const newRecord: AuthRecord = {
+      id: `new-${Date.now()}`,
+      patient: { name: form.patient || 'New Patient', dob: '' },
+      authNumber: form.authorizationNumber,
+      payer: { name: form.payer, planId: form.payerId },
+      startDate: form.startDate ? new Date(form.startDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
+      endDate: form.endDate ? new Date(form.endDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
+      visitsAuthorized: parseInt(form.visitsAuthorized) || 0,
+      visitsCompleted: 0,
+      visitsScheduled: 0,
+      state: 'Not Started',
+      status: form.authorizationNumber ? 'Active' : 'Needs Auth',
+      facility: form.facility,
+      provider: form.provider,
+      assignedTo: form.assignedTo,
+      tags: form.tags ? [form.tags] : [],
+      notes: form.notes
+        ? [{ id: `n${Date.now()}`, text: form.notes, author: 'Adam Smith', timestamp: new Date().toISOString() }]
+        : [],
+    };
+    setRecords((prev) => [newRecord, ...prev]);
+  }, []);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -788,7 +815,10 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
               <ChevronDown className="w-[18px] h-[18px] text-primary" />
             </button>
           </div>
-          <button className="flex items-center gap-1.5 h-7 px-3.5 py-[3px] bg-primary rounded-full text-sm font-medium text-white">
+          <button
+            onClick={() => { setSelectedRecordId(null); setCreateDrawerOpen(true); }}
+            className="flex items-center gap-1.5 h-7 px-3.5 py-[3px] bg-primary rounded-full text-sm font-medium text-white"
+          >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Authorization</span>
           </button>
@@ -1114,7 +1144,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
       />
       </div>
 
-      {selectedRecord && (
+      {selectedRecord && !createDrawerOpen && (
         <AuthDetailPanel
           record={selectedRecord}
           allRecords={records}
@@ -1123,6 +1153,14 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
           onDetailChange={handleDetailChange}
           tableCollapsed={tableCollapsed}
           onExpandTable={() => setTableCollapsed(false)}
+        />
+      )}
+
+      {createDrawerOpen && (
+        <CreateAuthDrawer
+          open={createDrawerOpen}
+          onClose={() => setCreateDrawerOpen(false)}
+          onCreate={handleCreateAuth}
         />
       )}
     </main>
