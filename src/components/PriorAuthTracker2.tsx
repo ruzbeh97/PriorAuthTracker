@@ -975,9 +975,11 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                     {col.label}
                   </th>
                 ))}
-                <th className="bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-right text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 shadow-[-2px_0_4px_rgba(0,0,0,0.08)]">
-                  Assignee
-                </th>
+                {!isDetailOpen && (
+                  <th className="bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-right text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 shadow-[-2px_0_4px_rgba(0,0,0,0.08)]">
+                    Assignee
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1111,16 +1113,17 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                         </>
                       )}
 
-                      {/* Assignee (sticky) */}
-                      <td className={`px-4 py-2 w-[100px] text-right sticky right-0 ${rowBg} border-l border-outline shadow-[-2px_0_4px_rgba(0,0,0,0.08)]`}>
-                        <AssigneeCell
-                          record={record}
-                          isOpen={assigneeDropdownId === record.id}
-                          onToggle={() => setAssigneeDropdownId((prev) => (prev === record.id ? null : record.id))}
-                          onAssign={(names) => handleAssignRecord(record.id, names)}
-                          onClose={() => setAssigneeDropdownId(null)}
-                        />
-                      </td>
+                      {!isDetailOpen && (
+                        <td className={`px-4 py-2 w-[100px] text-right sticky right-0 ${rowBg} border-l border-outline shadow-[-2px_0_4px_rgba(0,0,0,0.08)]`}>
+                          <AssigneeCell
+                            record={record}
+                            isOpen={assigneeDropdownId === record.id}
+                            onToggle={() => setAssigneeDropdownId((prev) => (prev === record.id ? null : record.id))}
+                            onAssign={(names) => handleAssignRecord(record.id, names)}
+                            onClose={() => setAssigneeDropdownId(null)}
+                          />
+                        </td>
+                      )}
                     </tr>
                   );
                 });
