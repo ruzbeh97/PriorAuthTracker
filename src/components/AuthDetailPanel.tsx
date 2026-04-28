@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import VisitsBar from './VisitsBar';
 import CopyButton from './CopyButton';
@@ -11,6 +11,8 @@ interface AuthDetailPanelProps {
   onClose?: () => void;
   onReassignVisit: (fromRecordId: string, toAuthNumber: string, type: 'completed' | 'scheduled', apptDateTime?: string) => void;
   onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
+  onAddNote?: (recordId: string, text: string) => void;
+  onDeleteNote?: (recordId: string, noteId: string) => void;
   tableCollapsed?: boolean;
   onExpandTable?: () => void;
   separated?: boolean;
@@ -52,7 +54,7 @@ interface PendingReassignment {
   type: 'completed' | 'scheduled';
 }
 
-export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
+export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, onAddNote, onDeleteNote, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
 
@@ -61,6 +63,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   const [pendingReassignments, setPendingReassignments] = useState<PendingReassignment[]>([]);
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
+  const [newNote, setNewNote] = useState('');
   const [portalCurrentUrl, setPortalCurrentUrl] = useState('');
   const [portalAddressValue, setPortalAddressValue] = useState('');
   const initializedForRef = useRef<string | null>(null);
@@ -197,7 +200,13 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             </button>
           )}
           <h2 className="text-xl font-medium text-text-primary">
-            {activeAction === 'assign' ? 'Patient Demographics' : activeAction === 'attachments' ? 'Attachments' : 'Authorization Details'}
+            {activeAction === 'assign'
+              ? 'Patient Demographics'
+              : activeAction === 'attachments'
+              ? 'Attachments'
+              : activeAction === 'appointments'
+              ? 'Appointments'
+              : 'Authorization Details'}
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -255,6 +264,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         <PatientDemographicsView record={record} />
       ) : activeAction === 'attachments' ? (
         <AttachmentsView record={record} />
+      ) : activeAction === 'appointments' ? (
+        <AppointmentsView record={record} />
       ) : (
       <div className="flex-1 overflow-y-auto py-4">
         {/* Patient header */}
@@ -374,9 +385,6 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
           )}
         </div>
 
-        {/* Divider */}
-        <div className="my-3 border-t border-outline" />
-
         {/* Completed Appointments section */}
         {completedAppts.length > 0 && (
           <div className="px-4">
@@ -446,6 +454,91 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         {/* Divider */}
         <div className="my-3 border-t border-outline" />
 
+        {/* Notes */}
+        <div className="px-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <p className="text-sm font-medium text-text-primary">Notes</p>
+            {record.notes.length > 0 && (
+              <span className="text-xs text-text-secondary">({record.notes.length})</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 mb-3">
+            <textarea
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  const trimmed = newNote.trim();
+                  if (trimmed && onAddNote) {
+                    onAddNote(record.id, trimmed);
+                    setNewNote('');
+                  }
+                }
+              }}
+              placeholder="Add a note..."
+              rows={2}
+              className="w-full px-2.5 py-2 text-xs text-text-primary bg-white border border-outline rounded resize-none focus:outline-none focus:border-primary placeholder:text-text-secondary/60"
+            />
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => {
+                  const trimmed = newNote.trim();
+                  if (trimmed && onAddNote) {
+                    onAddNote(record.id, trimmed);
+                    setNewNote('');
+                  }
+                }}
+                disabled={!newNote.trim() || !onAddNote}
+                className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Add Note
+              </button>
+            </div>
+          </div>
+
+          {record.notes.length === 0 ? (
+            <div className="flex items-center gap-2 text-text-secondary py-2">
+              <MessageSquare className="w-3.5 h-3.5 opacity-40" strokeWidth={1.5} />
+              <p className="text-xs">No notes yet.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {[...record.notes]
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .map((note) => (
+                  <div key={note.id} className="group flex gap-2 py-2 border-b border-outline/60 last:border-b-0">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[10px] font-bold text-primary">
+                        {note.author.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-text-primary">{note.author}</span>
+                        <span className="text-[10px] text-text-secondary">{formatTimelineDate(note.timestamp)}</span>
+                      </div>
+                      <p className="text-xs text-text-primary mt-0.5 leading-relaxed whitespace-pre-wrap wrap-break-word">{note.text}</p>
+                    </div>
+                    {onDeleteNote && (
+                      <button
+                        onClick={() => onDeleteNote(record.id, note.id)}
+                        className="p-1 rounded hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shrink-0 self-start"
+                        title="Delete note"
+                      >
+                        <Trash2 className="w-3 h-3 text-text-secondary hover:text-status-expired" strokeWidth={1.5} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="my-3 border-t border-outline" />
+
         {/* Activity Timeline */}
         <div className="px-4">
           <p className="text-sm font-medium text-text-primary mb-3">Activity Timeline</p>
@@ -473,6 +566,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         { id: 'details', icon: CheckCircle, label: 'Authorization Details' },
         { id: 'assign', icon: User, label: 'Assign' },
         { id: 'attachments', icon: Paperclip, label: 'Attachments' },
+        { id: 'appointments', icon: Calendar, label: 'Appointments' },
       ] as const).map(({ id, icon: Icon, label }) => {
         const isActive = id === 'details' ? !activeAction || activeAction === 'details' : activeAction === id;
         return (
@@ -892,6 +986,249 @@ function AttachmentsView({ record: _record }: { record: AuthRecord }) {
                   <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{att.documentDate}</td>
                   <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{att.uploadedBy}</td>
                   <td className="py-2.5 px-3 text-text-secondary whitespace-nowrap">{att.tags.length === 0 ? '--' : att.tags.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface Appointment {
+  id: string;
+  dateTime: string;
+  status: 'Checked In' | 'Scheduled' | 'Completed' | 'Cancelled' | 'No Show';
+  case: string;
+  caseId: string;
+  clinicalNoteType: string;
+  appointmentType: string;
+  provider: string;
+  insurance: string;
+  facility: string;
+  caseTags: string[];
+}
+
+const MOCK_APPOINTMENTS: Appointment[] = [
+  { id: 'appt-1', dateTime: '04/28/2026 09:15 AM', status: 'Scheduled', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Re-evaluation', appointmentType: 'Therapeutic Exercise', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: ['WC'] },
+  { id: 'appt-2', dateTime: '04/22/2026 02:00 PM', status: 'Checked In', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Daily Note', appointmentType: 'Manual Therapy', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-3', dateTime: '04/15/2026 10:30 AM', status: 'Completed', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Daily Note', appointmentType: 'Therapeutic Exercise', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-4', dateTime: '04/08/2026 04:45 PM', status: 'No Show', case: 'Knee Rehab', caseId: '198432', clinicalNoteType: '-', appointmentType: 'Aqua Therapy', provider: 'Vaidehi Shah', insurance: 'CIGNA PPO', facility: 'WESTSIDE REHAB', caseTags: ['Telehealth'] },
+  { id: 'appt-5', dateTime: '03/30/2026 11:00 AM', status: 'Completed', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Progress Report', appointmentType: 'Manual Therapy', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-6', dateTime: '03/24/2026 08:30 AM', status: 'Cancelled', case: 'new case', caseId: '361021', clinicalNoteType: '-', appointmentType: 'Initial Evaluation', provider: 'Vaidehi Shah', insurance: 'CIGNA PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-7', dateTime: '03/18/2026 01:15 PM', status: 'Completed', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Daily Note', appointmentType: 'Therapeutic Exercise', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-8', dateTime: '03/10/2026 07:00 AM', status: 'Checked In', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Initial Evaluation', appointmentType: '129 Knee Test', provider: 'Ansh Mehta', insurance: 'SELF-PAY (NO INSURANCE)', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-9', dateTime: '02/28/2026 03:00 PM', status: 'Completed', case: 'Knee Rehab', caseId: '198432', clinicalNoteType: 'Daily Note', appointmentType: 'Aqua Block', provider: 'Vaidehi Shah', insurance: 'CIGNA PPO', facility: 'WESTSIDE REHAB', caseTags: [] },
+  { id: 'appt-10', dateTime: '02/20/2026 03:40 PM', status: 'Scheduled', case: 'new case', caseId: '361021', clinicalNoteType: '-', appointmentType: 'Aqua Block', provider: 'Vaidehi Shah', insurance: 'CIGNA PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-11', dateTime: '02/12/2026 09:00 AM', status: 'Completed', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Daily Note', appointmentType: 'Manual Therapy', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: [] },
+  { id: 'appt-12', dateTime: '02/05/2026 10:45 AM', status: 'Completed', case: 'Lower Back', caseId: '232314', clinicalNoteType: 'Initial Evaluation', appointmentType: 'Initial Evaluation', provider: 'Ansh Mehta', insurance: 'BCBS PPO', facility: 'MAIN OFFICE', caseTags: ['WC'] },
+];
+
+function AppointmentStatusChip({ status }: { status: Appointment['status'] }) {
+  switch (status) {
+    case 'Checked In':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[#e6f2d9] text-[#4f7326] whitespace-nowrap">
+          <Check className="w-3 h-3" strokeWidth={2.5} />
+          Checked In
+        </span>
+      );
+    case 'Scheduled':
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-outline text-text-primary whitespace-nowrap">
+          Scheduled
+        </span>
+      );
+    case 'Completed':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[#e0ebff] text-[#1b3f9a] whitespace-nowrap">
+          <Check className="w-3 h-3" strokeWidth={2.5} />
+          Completed
+        </span>
+      );
+    case 'No Show':
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#fde8c6] text-[#7a4c00] whitespace-nowrap">
+          No Show
+        </span>
+      );
+    case 'Cancelled':
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#fde2e1] text-[#a8302d] whitespace-nowrap">
+          Cancelled
+        </span>
+      );
+  }
+}
+
+function AppointmentsView({ record: _record }: { record: AuthRecord }) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const filtered = MOCK_APPOINTMENTS.filter((a) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return [a.dateTime, a.status, a.case, a.caseId, a.clinicalNoteType, a.appointmentType, a.provider, a.insurance, a.facility]
+      .some((v) => v.toLowerCase().includes(q));
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const ad = new Date(a.dateTime).getTime();
+    const bd = new Date(b.dateTime).getTime();
+    return sortDir === 'asc' ? ad - bd : bd - ad;
+  });
+
+  const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sorted.map((a) => a.id)));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="px-6 py-5">
+        <div className="flex items-center gap-1.5 mb-3">
+          <h3 className="text-sm font-medium text-text-primary">Appointments</h3>
+          <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <button
+            className={`p-1.5 rounded hover:bg-surface-variant transition-colors ${selectedIds.size === 0 ? 'opacity-50' : ''}`}
+            title="Download selected"
+          >
+            <Download className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+          </button>
+          <div className="relative flex-1 max-w-[240px] ml-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search"
+              className="w-full pl-8 pr-7 py-1.5 text-sm border border-outline rounded bg-white text-text-primary outline-none focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto border border-outline rounded-lg">
+          <table className="text-sm min-w-max w-full">
+            <thead className="bg-surface-variant">
+              <tr className="text-left text-xs font-medium text-text-secondary">
+                <th className="py-2.5 px-3 w-10 sticky left-0 bg-surface-variant z-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded border-outline accent-text-primary"
+                  />
+                </th>
+                <th className="py-2.5 px-3 sticky left-10 bg-surface-variant whitespace-nowrap w-[120px] z-10" />
+                <th className="py-2.5 px-3 whitespace-nowrap">
+                  <button
+                    onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                    className="inline-flex items-center gap-1 hover:text-text-primary transition-colors"
+                  >
+                    Date/Time
+                    {sortDir === 'asc' ? (
+                      <ChevronUp className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    )}
+                  </button>
+                </th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case ID</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Clinical Note Type</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Appointment Type</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Provider</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Insurance</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Facility</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((appt) => (
+                <tr key={appt.id} className="border-t border-outline hover:bg-surface-variant/40">
+                  <td className="py-2.5 px-3 w-10 sticky left-0 bg-white z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(appt.id)}
+                      onChange={() => toggleOne(appt.id)}
+                      className="w-4 h-4 rounded border-outline accent-text-primary"
+                    />
+                  </td>
+                  <td className="py-2.5 px-3 sticky left-10 bg-white w-[120px] z-10">
+                    <div className="flex items-center gap-2">
+                      <button title="Edit" className="text-text-secondary hover:text-primary transition-colors">
+                        <Pencil className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                      <button title="View" className="text-text-secondary hover:text-primary transition-colors">
+                        <Eye className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                      <button title="History" className="text-text-secondary hover:text-primary transition-colors">
+                        <History className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                      <button title="Add" className="text-text-secondary hover:text-primary transition-colors">
+                        <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.dateTime}</td>
+                  <td className="py-2.5 px-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <AppointmentStatusChip status={appt.status} />
+                      <button title="Calendar" className="text-text-secondary hover:text-primary transition-colors">
+                        <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                      {appt.status === 'Checked In' ? (
+                        <button title="Open" className="text-text-secondary hover:text-primary transition-colors">
+                          <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        </button>
+                      ) : (
+                        <button title="Confirm" className="text-text-secondary hover:text-primary transition-colors">
+                          <Check className="w-3.5 h-3.5" strokeWidth={1.5} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.case}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.caseId}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.clinicalNoteType}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.appointmentType}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.provider}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.insurance}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{appt.facility}</td>
+                  <td className="py-2.5 px-3 whitespace-nowrap">
+                    {appt.caseTags.length === 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-outline/40 text-text-secondary">No tags</span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-outline text-text-primary">{appt.caseTags.join(', ')}</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

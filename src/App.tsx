@@ -384,6 +384,8 @@ export default function App() {
               onClose={() => setDetailRecordId(null)}
               onReassignVisit={handleReassignVisit}
               onDetailChange={handleDetailChange}
+              onAddNote={handleAddNote}
+              onDeleteNote={handleDeleteNote}
             />
           )}
           </>

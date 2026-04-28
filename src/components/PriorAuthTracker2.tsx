@@ -95,6 +95,19 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
+function formatNoteTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const hour = h % 12 || 12;
+  const min = m.toString().padStart(2, '0');
+  return `${month}/${day} ${hour}:${min}${ampm}`;
+}
+
 const TEAM_MEMBERS = [
   { name: 'Ashton Roy', color: 'bg-[#d1e6fa]' },
   { name: 'Bailey Moon', color: 'bg-[#e2daf1]' },
@@ -379,15 +392,6 @@ const TABLE_COLUMNS_FULL = [
   { key: 'notes', label: 'Notes', width: 'flex-1 min-w-[120px]' },
 ];
 
-const TABLE_COLUMNS_COMPACT = [
-  { key: 'patient', label: 'Patient', width: 'w-[145px]' },
-  { key: 'authNumber', label: 'Auth #', width: 'w-[160px]' },
-  { key: 'payer', label: 'Payer', width: 'w-[105px]' },
-  { key: 'start', label: 'Start', width: 'w-[93px]' },
-  { key: 'end', label: 'End', width: 'w-[93px]' },
-  { key: 'visits', label: 'Visits', width: 'w-[120px]' },
-];
-
 interface SavedView {
   id: string;
   name: string;
@@ -598,6 +602,27 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
+  const handleAddNote = useCallback((recordId: string, text: string) => {
+    const now = new Date().toISOString();
+    const noteId = `n${Date.now()}`;
+    setRecords((prev) =>
+      prev.map((r) => {
+        if (r.id !== recordId) return r;
+        const entry: TimelineEntry = { id: `tl-${Date.now()}`, timestamp: now, author: 'Adam Smith', action: { kind: 'note_added', text } };
+        return { ...r, notes: [...r.notes, { id: noteId, text, author: 'Adam Smith', timestamp: now }], timeline: [...(r.timeline || []), entry] };
+      })
+    );
+  }, []);
+
+  const handleDeleteNote = useCallback((recordId: string, noteId: string) => {
+    setRecords((prev) =>
+      prev.map((r) => {
+        if (r.id !== recordId) return r;
+        return { ...r, notes: r.notes.filter((n) => n.id !== noteId) };
+      })
+    );
+  }, []);
+
   const handleBulkAssignOwner = useCallback((owner: string) => {
     setRecords((prev) => prev.map((r) => (selectedIds.has(r.id) ? { ...r, assignedTo: owner } : r)));
   }, [selectedIds]);
@@ -634,7 +659,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   const allTags = useMemo(() => [...new Set(records.flatMap((r) => r.tags))].sort(), [records]);
 
   const isDetailOpen = !!selectedRecord;
-  const TABLE_COLUMNS = isDetailOpen ? TABLE_COLUMNS_COMPACT : TABLE_COLUMNS_FULL;
+  const TABLE_COLUMNS = TABLE_COLUMNS_FULL;
 
   const allSelected = filteredRecords.length > 0 && selectedIds.size === filteredRecords.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -1080,38 +1105,34 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                         />
                       </td>
 
-                      {!isDetailOpen && (
-                        <>
-                        <td className="px-4 py-2 w-[107px]">
-                          <StateChip state={record.state} />
-                        </td>
-                        <td className="px-4 py-4 w-[92px]">
-                          <StatusDot status={record.status} />
-                        </td>
-                        <td className="px-4 py-4 w-[160px]">
-                          <span className="text-sm text-text-primary truncate block">{record.facility}</span>
-                        </td>
-                        <td className="px-4 py-4 w-[132px]">
-                          <span className="text-sm text-text-primary truncate block w-[100px]">{record.provider}</span>
-                        </td>
-                        <td className="px-4 py-4 w-[167px]">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {record.tags.length > 0 ? (
-                              <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
-                                WC AUTHORIZATION
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 flex-1 min-w-[120px]">
-                          <span className="text-sm text-text-primary truncate block">
-                            {record.notes.length > 0
-                              ? `${record.notes[0].text} - 3/12 3:45pm`
-                              : ''}
-                          </span>
-                        </td>
-                        </>
-                      )}
+                      <td className="px-4 py-2 w-[107px]">
+                        <StateChip state={record.state} />
+                      </td>
+                      <td className="px-4 py-4 w-[92px]">
+                        <StatusDot status={record.status} />
+                      </td>
+                      <td className="px-4 py-4 w-[160px]">
+                        <span className="text-sm text-text-primary truncate block">{record.facility}</span>
+                      </td>
+                      <td className="px-4 py-4 w-[132px]">
+                        <span className="text-sm text-text-primary truncate block w-[100px]">{record.provider}</span>
+                      </td>
+                      <td className="px-4 py-4 w-[167px]">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {record.tags.length > 0 ? (
+                            <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
+                              WC AUTHORIZATION
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 flex-1 min-w-[120px]">
+                        <span className="text-sm text-text-primary truncate block">
+                          {record.notes.length > 0
+                            ? `${record.notes[record.notes.length - 1].text} - ${formatNoteTimestamp(record.notes[record.notes.length - 1].timestamp)}`
+                            : ''}
+                        </span>
+                      </td>
 
                       {!isDetailOpen && (
                         <td className={`px-4 py-2 w-[100px] text-right sticky right-0 ${rowBg} border-l border-outline shadow-[-2px_0_4px_rgba(0,0,0,0.08)]`}>
@@ -1154,6 +1175,8 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
           onClose={() => { setSelectedRecordId(null); setTableCollapsed(false); }}
           onReassignVisit={handleReassignVisit}
           onDetailChange={handleDetailChange}
+          onAddNote={handleAddNote}
+          onDeleteNote={handleDeleteNote}
           tableCollapsed={tableCollapsed}
           onExpandTable={() => setTableCollapsed(false)}
           separated
