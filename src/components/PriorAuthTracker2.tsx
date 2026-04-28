@@ -1156,6 +1156,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
           onDetailChange={handleDetailChange}
           tableCollapsed={tableCollapsed}
           onExpandTable={() => setTableCollapsed(false)}
+          separated
         />
       )}
 

@@ -36,6 +36,18 @@ export default function App() {
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
 
+  const handleSelectedRecordChange = useCallback((record: AuthRecord | null, index: number, total: number) => {
+    setDetailHeaderInfo(record ? { patientName: record.patient.name, authNumber: record.authNumber || '---', index, total } : null);
+  }, []);
+
+  const handleRegisterNavigate = useCallback((fn: (dir: 'prev' | 'next') => void) => {
+    navigateRecordRef.current = fn;
+  }, []);
+
+  const handleRegisterClearSelection = useCallback((fn: () => void) => {
+    clearSelectionRef.current = fn;
+  }, []);
+
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -291,7 +303,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-surface-variant overflow-hidden">
-      <Sidebar collapsed={!sidebarOpen} activePage={activePage} onPageChange={setActivePage} />
+      <Sidebar collapsed={!sidebarOpen} activePage={activePage} onPageChange={setActivePage} onExpand={() => setSidebarOpen(true)} />
       <div className="flex flex-col flex-1 min-w-0 h-full">
         <Header
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
@@ -302,11 +314,9 @@ export default function App() {
         <div className="flex flex-1 min-h-0">
           {activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
-              onSelectedRecordChange={(record, index, total) => {
-                setDetailHeaderInfo(record ? { patientName: record.patient.name, authNumber: record.authNumber || '---', index, total } : null);
-              }}
-              registerNavigate={(fn) => { navigateRecordRef.current = fn; }}
-              registerClearSelection={(fn) => { clearSelectionRef.current = fn; }}
+              onSelectedRecordChange={handleSelectedRecordChange}
+              registerNavigate={handleRegisterNavigate}
+              registerClearSelection={handleRegisterClearSelection}
             />
           ) : (
           <>

@@ -45,9 +45,10 @@ interface SidebarProps {
   collapsed: boolean;
   activePage: string;
   onPageChange: (page: string) => void;
+  onExpand?: () => void;
 }
 
-export default function Sidebar({ collapsed, activePage, onPageChange }: SidebarProps) {
+export default function Sidebar({ collapsed, activePage, onPageChange, onExpand }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Daily Operations']));
 
   const toggleExpand = (label: string) => {
@@ -71,10 +72,21 @@ export default function Sidebar({ collapsed, activePage, onPageChange }: Sidebar
           </div>
           {navItems.map((item) => {
             const active = isChildActive(item);
+            const hasChildren = !!item.children?.length;
             return (
               <button
                 key={item.label}
                 title={item.label}
+                onClick={() => {
+                  onExpand?.();
+                  if (hasChildren) {
+                    setExpandedSections((prev) => {
+                      const next = new Set(prev);
+                      next.add(item.label);
+                      return next;
+                    });
+                  }
+                }}
                 className={`p-2 rounded-lg transition-colors ${
                   active ? 'bg-primary/10 text-primary' : 'text-text-tertiary hover:bg-surface-variant'
                 }`}
@@ -85,10 +97,18 @@ export default function Sidebar({ collapsed, activePage, onPageChange }: Sidebar
           })}
         </div>
         <div className="flex flex-col items-center gap-2 pb-4 border-t border-[#d1d5db] pt-3">
-          <button title="Settings" className="p-2 rounded-lg text-text-tertiary hover:bg-surface-variant transition-colors">
+          <button
+            title="Settings"
+            onClick={() => onExpand?.()}
+            className="p-2 rounded-lg text-text-tertiary hover:bg-surface-variant transition-colors"
+          >
             <Settings className="w-5 h-5" strokeWidth={1.5} />
           </button>
-          <button title="Refer a practice" className="p-2 rounded-lg text-primary hover:opacity-80 transition-opacity">
+          <button
+            title="Refer a practice"
+            onClick={() => onExpand?.()}
+            className="p-2 rounded-lg text-primary hover:opacity-80 transition-opacity"
+          >
             <Gift className="w-4 h-4" strokeWidth={1.5} />
           </button>
         </div>

@@ -18,8 +18,8 @@ interface ToolbarProps {
 export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOpen, onToggleFilter, activeFilterCount, records, filters, onFiltersChange }: ToolbarProps) {
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-4 bg-white">
-        <div className="flex flex-wrap gap-y-3 items-center flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 px-4 py-4 bg-white">
+        <div className="flex flex-wrap gap-y-3 items-center min-w-0">
           <div className="relative">
             <button
               onClick={onToggleFilter}
@@ -46,19 +46,19 @@ export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOp
             />
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <div className="flex items-center">
-            <button className="inline-flex items-center gap-1 h-7 pl-3.5 pr-2.5 py-[3px] border border-primary rounded-l-full text-sm font-medium text-primary hover:bg-primary/5 transition-colors">
-              <Download className="w-3 h-4" strokeWidth={2} />
+            <button className="inline-flex items-center gap-1 h-7 pl-3.5 pr-2.5 py-[3px] border border-primary rounded-l-full text-sm font-medium text-primary hover:bg-primary/5 transition-colors whitespace-nowrap">
+              <Download className="w-3 h-4 shrink-0" strokeWidth={2} />
               Download Filtered View
             </button>
-            <button className="inline-flex items-center justify-center h-7 w-7 border border-primary border-l-0 rounded-r-full text-primary hover:bg-primary/5 transition-colors">
+            <button className="inline-flex items-center justify-center h-7 w-7 border border-primary border-l-0 rounded-r-full text-primary hover:bg-primary/5 transition-colors shrink-0">
               <ChevronDown className="w-4 h-4" strokeWidth={2} />
             </button>
           </div>
           <button
             onClick={onCreateAuth}
-            className="inline-flex items-center gap-1 px-3.5 py-[3px] h-7 bg-primary rounded-full text-sm font-medium text-white hover:bg-primary-hover transition-colors"
+            className="inline-flex items-center gap-1 px-3.5 py-[3px] h-7 bg-primary rounded-full text-sm font-medium text-white hover:bg-primary-hover transition-colors whitespace-nowrap"
           >
             Create Authorization
           </button>

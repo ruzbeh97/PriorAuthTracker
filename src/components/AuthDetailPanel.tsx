@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
@@ -13,6 +13,7 @@ interface AuthDetailPanelProps {
   onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
   tableCollapsed?: boolean;
   onExpandTable?: () => void;
+  separated?: boolean;
 }
 
 const PAYER_PORTAL_URLS: Record<string, string> = {
@@ -51,7 +52,7 @@ interface PendingReassignment {
   type: 'completed' | 'scheduled';
 }
 
-export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, tableCollapsed, onExpandTable }: AuthDetailPanelProps) {
+export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
 
@@ -97,6 +98,25 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
 
   const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
 
+  const providerOptions = useMemo(() => {
+    const seed = ['Jon Jones', 'Sarah Adams', 'Dr. Li'];
+    const fromRecords = allRecords.map((r) => r.provider).filter(Boolean);
+    return [...new Set([...seed, ...fromRecords, record.provider].filter(Boolean))].sort();
+  }, [allRecords, record.provider]);
+
+  const facilityOptions = useMemo(() => {
+    const seed = ['Sunnybrook Hospital', 'Riverside Clinic', 'Westside Rehab'];
+    const fromRecords = allRecords.map((r) => r.facility).filter(Boolean);
+    return [...new Set([...seed, ...fromRecords, record.facility].filter(Boolean))].sort();
+  }, [allRecords, record.facility]);
+
+  const assigneeOptions = useMemo(() => {
+    const seed = ['Jaime Mandela', 'Emma Smith', 'Adam Smith'];
+    const fromRecords = allRecords.flatMap((r) => (r.assignedTo ? r.assignedTo.split(', ').filter(Boolean) : []));
+    const current = record.assignedTo ? record.assignedTo.split(', ').filter(Boolean) : [];
+    return [...new Set([...seed, ...fromRecords, ...current])].sort();
+  }, [allRecords, record.assignedTo]);
+
   useEffect(() => {
     if (portalOpen) {
       setPortalCurrentUrl(portalUrl);
@@ -105,9 +125,9 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   }, [portalUrl, portalOpen]);
 
   return (
-    <div className={`flex h-full gap-3 ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
+    <div className={`flex h-full ${separated ? 'gap-3' : 'bg-white border border-outline overflow-hidden'} ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
 
-    <div className={`bg-white border border-outline rounded-lg flex h-full overflow-hidden ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? 'w-[880px]' : 'w-[440px]'}`}>
+    <div className={`flex h-full overflow-hidden ${separated ? 'bg-white border border-outline rounded-lg' : ''} ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? 'w-[880px]' : 'w-[440px]'}`}>
       {portalOpen && (
         <div className={`${tableCollapsed ? 'flex-1 min-w-0' : 'w-[440px] shrink-0'} flex flex-col border-r border-outline`}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-outline shrink-0">
@@ -331,9 +351,9 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                 {record.state}
               </span>
             </div>
-            <EditableDetailRow editing={editing} label="Assigned To" value={record.assignedTo} editValue={editFields['Assigned To']} onChange={(v) => setEditFields((p) => ({ ...p, 'Assigned To': v }))} />
-            <EditableDetailRow editing={editing} label="Provider" value={record.provider} editValue={editFields['Provider']} onChange={(v) => setEditFields((p) => ({ ...p, 'Provider': v }))} />
-            <EditableDetailRow editing={editing} label="Facility" value={record.facility} editValue={editFields['Facility']} onChange={(v) => setEditFields((p) => ({ ...p, 'Facility': v }))} />
+            <EditableDetailRow editing={editing} label="Assigned To" value={record.assignedTo} editValue={editFields['Assigned To']} onChange={(v) => setEditFields((p) => ({ ...p, 'Assigned To': v }))} options={assigneeOptions} />
+            <EditableDetailRow editing={editing} label="Provider" value={record.provider} editValue={editFields['Provider']} onChange={(v) => setEditFields((p) => ({ ...p, 'Provider': v }))} options={providerOptions} />
+            <EditableDetailRow editing={editing} label="Facility" value={record.facility} editValue={editFields['Facility']} onChange={(v) => setEditFields((p) => ({ ...p, 'Facility': v }))} options={facilityOptions} />
           </div>
         </div>
 
@@ -448,7 +468,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
     </div>
 
     {/* Side icon strip */}
-    <div className="flex flex-col items-center gap-1 px-2 py-4 border border-outline rounded-lg bg-white">
+    <div className={`flex flex-col items-center gap-1 px-2 py-4 ${separated ? 'border border-outline rounded-lg bg-white' : 'border-l border-outline'}`}>
       {([
         { id: 'details', icon: CheckCircle, label: 'Authorization Details' },
         { id: 'assign', icon: User, label: 'Assign' },
@@ -534,7 +554,7 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="px-6 py-5">
-        <h3 className="text-sm font-medium text-text-secondary mb-3">General Information</h3>
+        <h3 className="text-sm font-medium text-text-primary mb-3">General Information</h3>
         <div className="flex flex-col gap-2">
           <DemoRow label="Patient Name" value={patientName} copyable />
           <DemoRow label="MRN" value={mrn} copyable />
@@ -548,7 +568,7 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
       </div>
 
       <div className="px-6 py-5 border-t border-outline">
-        <h3 className="text-sm font-medium text-text-secondary mb-3">Contact Information</h3>
+        <h3 className="text-sm font-medium text-text-primary mb-3">Contact Information</h3>
         <div className="flex flex-col gap-2">
           <DemoRow label="Phone Number" value={demographics.phone} copyable />
           <DemoRow label="Email" value={demographics.email} copyable />
@@ -558,31 +578,31 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
 
       <div className="py-5 border-t border-outline">
         <div className="flex items-center gap-1.5 mb-3 px-6">
-          <h3 className="text-sm font-medium text-text-secondary">Episodes of Care</h3>
+          <h3 className="text-sm font-medium text-text-primary">Episodes of Care</h3>
           <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-outline rounded-lg mx-6">
           <table className="text-sm min-w-max w-full">
-            <thead>
-              <tr className="border-b border-outline">
-                <th className="w-[72px] shrink-0 sticky left-0 bg-white" />
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Case ID</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Case Name</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Case Notes</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Plan of Care End Date</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Pending POC Visits</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Accident Date</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Case Rendering Provider</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Primary Insurance</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Secondary Insurance</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Tertiary Insurance</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Linked Prior Auths</th>
+            <thead className="bg-surface-variant">
+              <tr className="text-left text-xs font-medium text-text-secondary">
+                <th className="w-[72px] shrink-0 sticky left-0 bg-surface-variant py-2.5 px-3" />
+                <th className="py-2.5 px-3 whitespace-nowrap">Case ID</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case Name</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case Notes</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Plan of Care End Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Pending POC Visits</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Accident Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Case Rendering Provider</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Primary Insurance</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Secondary Insurance</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Tertiary Insurance</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Linked Prior Auths</th>
               </tr>
             </thead>
             <tbody>
               {episodes.map((ep, i) => (
-                <tr key={i} className="border-b border-outline">
-                  <td className="py-3 px-2 sticky left-0 bg-white">
+                <tr key={i} className="border-t border-outline hover:bg-surface-variant/40">
+                  <td className="py-2.5 px-3 sticky left-0 bg-white">
                     <div className="flex items-center gap-2">
                       <Pencil
                         className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary"
@@ -607,17 +627,17 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
                       <svg className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.caseId}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.caseName}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.caseNotes}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.pocEndDate}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.pendingPocVisits}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.accidentDate}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.renderingProvider}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.primaryInsurance}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.secondaryInsurance}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.tertiaryInsurance}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ep.linkedAuths}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.caseId}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.caseName}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.caseNotes}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.pocEndDate}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.pendingPocVisits}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.accidentDate}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.renderingProvider}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.primaryInsurance}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.secondaryInsurance}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.tertiaryInsurance}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ep.linkedAuths}</td>
                 </tr>
               ))}
             </tbody>
@@ -635,28 +655,28 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
 
       <div className="py-5 border-t border-outline">
         <div className="flex items-center gap-1.5 mb-3 px-6">
-          <h3 className="text-sm font-medium text-text-secondary">Insurance Providers</h3>
+          <h3 className="text-sm font-medium text-text-primary">Insurance Providers</h3>
           <ExternalLink className="w-3.5 h-3.5 text-text-secondary" strokeWidth={1.5} />
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-outline rounded-lg mx-6">
           <table className="text-sm min-w-max w-full">
-            <thead>
-              <tr className="border-b border-outline">
-                <th className="w-[72px] shrink-0 sticky left-0 bg-white" />
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">UID</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Insurance Provider</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Effective Date</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Expiry Date</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Policy Number</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Group Number</th>
-                <th className="px-3 py-2 text-left font-medium text-text-secondary whitespace-nowrap">Plan Type</th>
+            <thead className="bg-surface-variant">
+              <tr className="text-left text-xs font-medium text-text-secondary">
+                <th className="w-[72px] shrink-0 sticky left-0 bg-surface-variant py-2.5 px-3" />
+                <th className="py-2.5 px-3 whitespace-nowrap">UID</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Insurance Provider</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Status</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Effective Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Expiry Date</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Policy Number</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Group Number</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Plan Type</th>
               </tr>
             </thead>
             <tbody>
               {insuranceProviders.map((ins, i) => (
-                <tr key={i} className="border-b border-outline">
-                  <td className="py-3 px-2 sticky left-0 bg-white">
+                <tr key={i} className="border-t border-outline hover:bg-surface-variant/40">
+                  <td className="py-2.5 px-3 sticky left-0 bg-white">
                     <div className="flex items-center gap-2">
                       <Pencil
                         className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary"
@@ -679,14 +699,14 @@ function PatientDemographicsView({ record }: { record: AuthRecord }) {
                       <History className="w-3.5 h-3.5 text-text-secondary shrink-0 cursor-pointer hover:text-primary" strokeWidth={1.5} />
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.uid}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.name}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.status}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.effectiveDate}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.expiryDate}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.policyNumber}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.groupNumber}</td>
-                  <td className="px-3 py-3 text-text-primary whitespace-nowrap">{ins.planType}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.uid}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.name}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.status}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.effectiveDate}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.expiryDate}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.policyNumber}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.groupNumber}</td>
+                  <td className="py-2.5 px-3 text-text-primary whitespace-nowrap">{ins.planType}</td>
                 </tr>
               ))}
             </tbody>
@@ -1262,10 +1282,10 @@ function NewCaseDrawer({ onClose, initialData }: { onClose: () => void; initialD
 
 function DemoRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
-    <div className="flex items-start gap-2 py-0.5">
-      <span className="w-[140px] shrink-0 text-xs text-text-secondary">{label}</span>
-      <div className="flex items-center gap-1 min-w-0">
-        <span className="text-xs text-text-primary">{value}</span>
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-xs font-medium text-text-primary truncate">{value}</span>
         {copyable && <CopyButton text={value} />}
       </div>
     </div>
@@ -1365,28 +1385,98 @@ function AppointmentRow({ dateTime, authNumber, dateOptions, authOptions, onAuth
   );
 }
 
-function EditableDetailRow({ editing, label, value, editValue, onChange, copyable }: {
+function EditableDetailRow({ editing, label, value, editValue, onChange, copyable, options }: {
   editing: boolean;
   label: string;
   value: string;
   editValue?: string;
   onChange: (v: string) => void;
   copyable?: boolean;
+  options?: string[];
 }) {
   if (editing) {
     return (
       <div className="flex items-center gap-2 py-0.5">
         <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
-        <input
-          type="text"
-          value={editValue ?? value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 min-w-0 text-xs font-medium text-text-primary border border-outline rounded px-2 py-1 focus:outline-none focus:border-primary"
-        />
+        {options ? (
+          <EditableSelect value={editValue ?? value} onChange={onChange} options={options} />
+        ) : (
+          <input
+            type="text"
+            value={editValue ?? value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1 min-w-0 text-xs font-medium text-text-primary border border-outline rounded px-2 py-1 focus:outline-none focus:border-primary"
+          />
+        )}
       </div>
     );
   }
   return <DetailRow label={label} value={value} copyable={copyable} />;
+}
+
+function EditableSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center gap-1 text-xs font-medium text-text-primary border rounded px-2 py-1 bg-white transition-colors ${open ? 'border-primary' : 'border-outline hover:border-primary/40'}`}
+      >
+        <span className={`flex-1 truncate text-left ${value ? '' : 'text-text-secondary'}`}>
+          {value || 'Select...'}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-text-secondary shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline rounded shadow-lg overflow-hidden z-30">
+          <div className="flex items-center gap-1.5 border-b border-outline px-2 py-1.5">
+            <Search className="w-3 h-3 text-text-secondary shrink-0" strokeWidth={1.5} />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="flex-1 min-w-0 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none bg-transparent"
+            />
+          </div>
+          <div className="max-h-[200px] overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-text-secondary">No matches</div>
+            ) : (
+              filtered.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
+                  className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${opt === value ? 'bg-primary/5 text-primary font-medium' : 'text-text-primary hover:bg-surface-variant'}`}
+                >
+                  {opt}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formatTimelineDate(iso: string): string {
