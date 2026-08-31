@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
-import VisitsBar from './VisitsBar';
+import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
 
 interface AuthDetailPanelProps {
@@ -64,6 +64,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [newNote, setNewNote] = useState('');
+  const [trackingType, setTrackingType] = useState<'Visits' | 'CPTs'>('Visits');
+  const [cptEntries, setCptEntries] = useState<CptEntry[]>([emptyCptEntry()]);
   const [portalCurrentUrl, setPortalCurrentUrl] = useState('');
   const [portalAddressValue, setPortalAddressValue] = useState('');
   const initializedForRef = useRef<string | null>(null);
@@ -86,6 +88,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
     } else {
       setScheduledAppts([]);
     }
+    setTrackingType('Visits');
+    setCptEntries([emptyCptEntry()]);
   }
 
   const pastDateOptions = generateExceededAppointments(8, 3, 20);
@@ -128,7 +132,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   }, [portalUrl, portalOpen]);
 
   return (
-    <div className={`flex h-full ${separated ? 'gap-3' : 'bg-white border border-outline overflow-hidden'} ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
+    <div className={`flex h-full ${separated ? 'gap-3' : 'bg-white border border-outline rounded-r-lg overflow-hidden'} ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
 
     <div className={`flex h-full overflow-hidden ${separated ? 'bg-white border border-outline rounded-lg' : ''} ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? 'w-[880px]' : 'w-[440px]'}`}>
       {portalOpen && (
@@ -225,6 +229,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
           >
             <Globe className="w-5 h-5" />
           </button>
+          <span className="w-px h-7 bg-outline" />
           <button
             onClick={() => {
               if (hasPendingChanges) {
@@ -298,7 +303,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         {/* Details section */}
         <div className="px-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-text-primary">Details</span>
+            <span className="text-sm font-medium text-text-primary">Authorization Information</span>
             <button
               onClick={() => {
                 if (editing) {
@@ -343,18 +348,57 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             <DetailRow label="Payer ID" value={`${record.payer.name}IL: ${record.payer.planId}`} copyable />
             <EditableDetailRow editing={editing} label="Start Date" value={record.startDate || '--'} editValue={editFields['Start Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'Start Date': v }))} />
             <EditableDetailRow editing={editing} label="End Date" value={record.endDate || '--'} editValue={editFields['End Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'End Date': v }))} />
-            <DetailRow label="Visits Authorized" value={String(record.visitsAuthorized)} />
-            <DetailRow label="Visits Completed" value={String(record.visitsCompleted)} />
-            <DetailRow label="Future Visits Scheduled" value={String(record.visitsScheduled)} />
-            <DetailRow label="Visits Remaining" value={visitsRemaining > 0 ? `${visitsRemaining} (${unscheduled} unscheduled)` : '0'} />
-            {record.confidence && (
-              <div className="flex items-center gap-2 py-0.5">
-                <span className="w-[150px] shrink-0 text-xs text-text-secondary">Confidence</span>
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="w-5 h-5 text-status-active" strokeWidth={1.5} />
-                  <span className="text-xs font-medium text-text-primary">{record.confidence}</span>
-                </div>
+            <div className="flex items-center gap-2 py-0.5">
+              <span className="w-[150px] shrink-0 text-xs text-text-secondary">Tracking Type</span>
+              <div className="inline-flex items-center p-0.5 rounded-lg bg-surface-variant">
+                {(['Visits', 'CPTs'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTrackingType(t)}
+                    className={`px-2.5 h-6 rounded-md text-xs font-medium transition-colors ${
+                      trackingType === t
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
+            </div>
+            {trackingType === 'CPTs' ? (
+              cptEntries.map((entry, i) => (
+                <CptTrackingBlock
+                  key={entry.id}
+                  entry={entry}
+                  onChange={(next) =>
+                    setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
+                  }
+                  onDelete={() =>
+                    setCptEntries((prev) => {
+                      const remaining = prev.filter((e) => e.id !== entry.id);
+                      return remaining.length > 0 ? remaining : [emptyCptEntry()];
+                    })
+                  }
+                  onAdd={i === cptEntries.length - 1 ? () => setCptEntries((prev) => [...prev, emptyCptEntry()]) : undefined}
+                />
+              ))
+            ) : (
+              <>
+                <DetailRow label="Visits Authorized" value={String(record.visitsAuthorized)} />
+                <DetailRow label="Visits Completed" value={String(record.visitsCompleted)} />
+                <DetailRow label="Scheduled Visits" value={String(record.visitsScheduled)} />
+                <DetailRow label="Remaining Visits" value={visitsRemaining > 0 ? `${visitsRemaining} (${unscheduled} unscheduled)` : '0'} />
+                {record.confidence && (
+                  <div className="flex items-center gap-2 py-0.5">
+                    <span className="w-[150px] shrink-0 text-xs text-text-secondary">Confidence</span>
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-5 h-5 text-status-active" strokeWidth={1.5} />
+                      <span className="text-xs font-medium text-text-primary">{record.confidence}</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             <div className="flex items-start gap-2 py-1">
               <span className="w-[150px] shrink-0 text-xs text-text-secondary">State</span>
@@ -375,7 +419,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         <div className="px-4">
           <p className="text-sm font-medium text-text-primary mb-2">Visit Utilization</p>
           {(record.visitsAuthorized > 0 || record.visitsCompleted > 0 || record.visitsScheduled > 0) ? (
-            <VisitsBar
+            <UtilizationBar
+              layout="row"
               authorized={record.visitsAuthorized}
               completed={record.visitsCompleted}
               scheduled={record.visitsScheduled}
@@ -464,23 +509,41 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
           </div>
 
           <div className="flex flex-col gap-2 mb-3">
-            <textarea
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  const trimmed = newNote.trim();
-                  if (trimmed && onAddNote) {
-                    onAddNote(record.id, trimmed);
-                    setNewNote('');
+            <div className="flex flex-col rounded-lg border border-outline bg-white focus-within:border-primary transition-colors">
+              <textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    const trimmed = newNote.trim();
+                    if (trimmed && onAddNote) {
+                      onAddNote(record.id, trimmed);
+                      setNewNote('');
+                    }
                   }
-                }
-              }}
-              placeholder="Add a note..."
-              rows={2}
-              className="w-full px-2.5 py-2 text-xs text-text-primary bg-white border border-outline rounded resize-none focus:outline-none focus:border-primary placeholder:text-text-secondary/60"
-            />
+                }}
+                placeholder="Add a note... type @ to tag a teammate"
+                rows={3}
+                className="w-full px-3 pt-2.5 text-xs text-text-primary bg-transparent resize-none focus:outline-none placeholder:text-text-secondary/70"
+              />
+              <div className="flex items-center gap-3 px-3 pb-2">
+                <button
+                  type="button"
+                  className="p-0.5 rounded hover:bg-surface-variant transition-colors"
+                  title="Attach a file"
+                >
+                  <Upload className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  className="p-0.5 rounded hover:bg-surface-variant transition-colors"
+                  title="Translate"
+                >
+                  <Globe className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
             <div className="flex items-center justify-end">
               <button
                 onClick={() => {
@@ -545,8 +608,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
           {(record.timeline || []).length === 0 ? (
             <p className="text-xs text-text-secondary">No activity recorded yet.</p>
           ) : (
-            <div className="relative pl-10">
-              <div className="absolute left-[11px] top-2 bottom-2 w-px bg-outline" />
+            <div className="relative pl-[30px]">
+              <div className="absolute left-[8.5px] top-5 bottom-3 w-px bg-outline" />
               {[...(record.timeline || [])].reverse().map((entry) => (
                 <TimelineItem key={entry.id} entry={entry} />
               ))}
@@ -1629,6 +1692,171 @@ function DemoRow({ label, value, copyable }: { label: string; value: string; cop
   );
 }
 
+const CPT_CODES = ['97110', '97112', '97116', '97140', '97530', '97535', '97750'];
+const CPT_UNIT_TYPES = ['Units', 'Visits', 'Claims'];
+
+interface CptEntry {
+  id: string;
+  code: string;
+  unitTrackingType: string;
+  units: string;
+}
+
+function emptyCptEntry(): CptEntry {
+  return { id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, code: '', unitTrackingType: 'Units', units: '' };
+}
+
+function CptFieldSelect({
+  value,
+  placeholder,
+  options,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full h-7 flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-lg bg-surface-variant"
+      >
+        <span className={`text-sm truncate ${value ? 'text-text-primary' : 'text-[#808080]'}`}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={`w-[18px] h-[18px] text-text-secondary shrink-0 ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline rounded-lg shadow-lg overflow-hidden z-30">
+          <div className="flex items-center gap-1.5 border-b border-outline px-2 py-1.5">
+            <Search className="w-3 h-3 text-text-secondary shrink-0" strokeWidth={1.5} />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="flex-1 min-w-0 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none bg-transparent"
+            />
+          </div>
+          <div className="max-h-[200px] overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-text-secondary">No matches</div>
+            ) : (
+              filtered.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
+                  className={`w-full text-left px-2 py-1.5 text-sm transition-colors ${opt === value ? 'bg-primary/5 text-primary font-medium' : 'text-text-primary hover:bg-surface-variant'}`}
+                >
+                  {opt}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CptTrackingBlock({
+  entry,
+  onChange,
+  onDelete,
+  onAdd,
+}: {
+  entry: CptEntry;
+  onChange: (next: CptEntry) => void;
+  onDelete: () => void;
+  onAdd?: () => void;
+}) {
+  return (
+    <div className="flex gap-2.5 w-full pb-0.5 border-b border-outline last:border-b-0">
+      <div className="w-0.5 self-stretch rounded-full bg-primary shrink-0" />
+      <div className="flex-1 min-w-0 flex flex-col gap-2 py-4">
+        <div className="flex items-center gap-4">
+          <span className="w-40 shrink-0 text-base font-medium leading-5 text-[#0a1e8f]">CPT Code</span>
+          <CptFieldSelect
+            value={entry.code}
+            placeholder="Select a CPT code"
+            options={CPT_CODES}
+            onChange={(code) => onChange({ ...entry, code })}
+          />
+        </div>
+        <div className="flex items-start gap-4">
+          <div className="w-40 shrink-0">
+            <p className="text-base font-medium leading-5 text-[#0a1e8f]">Tracking Type</p>
+            <p className="text-xs leading-[18px] text-text-secondary">
+              Counts every unit of each selected CPT code used in claims
+            </p>
+          </div>
+          <CptFieldSelect
+            value={entry.unitTrackingType}
+            placeholder="Units"
+            options={CPT_UNIT_TYPES}
+            onChange={(unitTrackingType) => onChange({ ...entry, unitTrackingType })}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="w-40 shrink-0 text-base font-medium leading-5 text-[#0a1e8f]">Units</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={entry.units}
+            onChange={(e) => onChange({ ...entry, units: e.target.value.replace(/[^\d]/g, '') })}
+            placeholder="Enter Units"
+            className="flex-1 min-w-0 h-7 px-1.5 py-0.5 rounded-lg bg-surface-variant text-sm text-text-primary placeholder:text-[#808080] focus:outline-none"
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          {onAdd ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="p-0 text-primary hover:text-primary-hover transition-colors"
+              title="Add CPT"
+            >
+              <Plus className="w-4 h-4" strokeWidth={1.75} />
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="p-0 text-text-primary hover:text-status-expired transition-colors"
+            title="Remove CPT"
+          >
+            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
@@ -1836,7 +2064,7 @@ function TimelineItem({ entry }: { entry: TimelineEntry }) {
 
   switch (action.kind) {
     case 'appointment_moved':
-      icon = <ArrowRightLeft className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />;
+      icon = <ArrowRightLeft className="w-[18px] h-[18px] text-primary" strokeWidth={1.5} />;
       description = (
         <span>
           Moved {action.apptType} appt <span className="font-medium">{action.apptDateTime}</span> from{' '}
@@ -1846,7 +2074,7 @@ function TimelineItem({ entry }: { entry: TimelineEntry }) {
       );
       break;
     case 'detail_changed':
-      icon = <Edit3 className="w-3.5 h-3.5 text-status-expiring" strokeWidth={1.5} />;
+      icon = <Edit3 className="w-[18px] h-[18px] text-status-expiring" strokeWidth={1.5} />;
       description = (
         <span>
           Changed <span className="font-medium">{action.field}</span> from{' '}
@@ -1856,7 +2084,7 @@ function TimelineItem({ entry }: { entry: TimelineEntry }) {
       );
       break;
     case 'note_added':
-      icon = <FileText className="w-3.5 h-3.5 text-status-active" strokeWidth={1.5} />;
+      icon = <FileText className="w-[18px] h-[18px] text-status-active" strokeWidth={1.5} />;
       description = (
         <span>
           Added note: <span className="italic">&ldquo;{action.text.length > 60 ? action.text.slice(0, 60) + '...' : action.text}&rdquo;</span>
@@ -1866,14 +2094,15 @@ function TimelineItem({ entry }: { entry: TimelineEntry }) {
   }
 
   return (
-    <div className="relative pb-5 last:pb-0">
-      <div className="absolute left-[-40px] top-0.5 w-[22px] h-[22px] rounded-full bg-white border-2 border-outline flex items-center justify-center">
+    <div className="relative pb-4 last:pb-0">
+      <div className="absolute left-[-30px] top-px w-[18px] h-[18px] bg-white flex items-center justify-center">
         {icon}
       </div>
       <p className="text-xs text-text-primary leading-relaxed">{description}</p>
-      <div className="flex items-center gap-1.5 mt-1">
+      <div className="flex items-center gap-1.5 mt-0.5">
+        <span className="text-[10px] text-text-secondary">&bull;</span>
         <span className="text-[10px] text-text-secondary">{entry.author}</span>
-        <span className="text-[10px] text-text-secondary">&middot;</span>
+        <span className="text-[10px] text-text-secondary">&bull;</span>
         <span className="text-[10px] text-text-secondary">{formatTimelineDate(entry.timestamp)}</span>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, CheckCircle, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, PanelLeftClose } from 'lucide-react';
+import { ChevronDown, ChevronUp, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, PanelLeftClose } from 'lucide-react';
 import { mockAuthRecords } from '../data';
 import { groupByPatient } from '../utils';
 import FilterDropdown from './FilterDropdown';
@@ -12,63 +12,7 @@ import CreateAuthDrawer from './CreateAuthDrawer';
 import type { CreateAuthForm } from './CreateAuthDrawer';
 import type { AuthRecord, AuthState, TimelineEntry } from '../types';
 import type { PatientGroup } from '../utils';
-
-interface VisitsBarV2Props {
-  authorized: number;
-  completed: number;
-  scheduled: number;
-}
-
-function VisitsBarV2({ authorized, completed, scheduled }: VisitsBarV2Props) {
-  if (authorized === 0 && completed === 0 && scheduled === 0) {
-    return <span className="text-sm text-text-primary">-</span>;
-  }
-
-  const total = Math.max(authorized, completed + scheduled);
-  const exceeded = completed + scheduled > authorized;
-  const exceededCount = exceeded ? completed + scheduled - authorized : 0;
-
-  const completedPct = total > 0 ? (completed / total) * 100 : 0;
-  const scheduledPct = total > 0 ? (scheduled / total) * 100 : 0;
-
-  return (
-    <div className="flex flex-col items-center w-full">
-      <div className="flex items-center gap-[5.6px] text-[10px] leading-[15.4px] whitespace-nowrap">
-        <span className={`font-bold ${exceeded ? 'text-[#ee4744]' : 'text-[#1566b7]'}`}>
-          {completed} done
-        </span>
-        <span className={`font-medium ${exceeded ? 'text-[#f6a3a2]' : 'text-[#a4ccf4]'}`}>
-          {scheduled} sched
-        </span>
-        <span className="font-medium text-text-secondary">/ {authorized}</span>
-      </div>
-
-      {exceeded ? (
-        <div className="relative w-[106px] h-[13px] rounded-[8px] border-[0.7px] border-[#e91916] overflow-hidden">
-          <div className="absolute inset-y-0 left-0 bg-[#f6a3a2] rounded-[8px]" style={{ width: '100%' }} />
-          <div className="absolute inset-y-0 left-0 bg-[#ee4744] rounded-[8px]" style={{ width: `${completedPct}%` }} />
-          <div className="absolute inset-y-0 left-0 bg-[#d9d9d9] rounded-[8px]" style={{ width: `${Math.min((authorized / total) * 100, completedPct)}%` }} />
-        </div>
-      ) : (
-        <div className="relative w-[106px] h-[13px] rounded-[8px] border-[0.7px] border-[#8c8c8c] overflow-hidden">
-          <div className="absolute inset-y-[0.7px] left-[0.7px] bg-[#a4ccf4] rounded-[8px]" style={{ width: `${Math.min(completedPct + scheduledPct, 100) * 0.87}%` }} />
-          <div className="absolute inset-y-[0.7px] left-[0.7px] bg-[#1566b7] rounded-[8px]" style={{ width: `${completedPct * 0.75}%` }} />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between w-full">
-        {exceeded ? (
-          <span className="text-[10px] leading-[15.4px] text-text-secondary">{exceededCount} Exceeded</span>
-        ) : (
-          <>
-            <CheckCircle className="w-[13.3px] h-[13.3px] text-[#479e4c]" strokeWidth={2} />
-            <span className="text-[10px] leading-[15.4px] text-text-secondary">{Math.max(authorized - completed - scheduled, 0)} open</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+import UtilizationBar from './UtilizationBar';
 
 function StateChip({ state }: { state: string }) {
   if (state === 'Authorized') {
@@ -383,7 +327,7 @@ const TABLE_COLUMNS_FULL = [
   { key: 'payer', label: 'Payer', width: 'w-[105px]' },
   { key: 'start', label: 'Start', width: 'w-[93px]' },
   { key: 'end', label: 'End', width: 'w-[93px]' },
-  { key: 'visits', label: 'Visits', width: 'w-[120px]' },
+  { key: 'utilization', label: 'Utilization', width: 'w-[210px]' },
   { key: 'state', label: 'State', width: 'w-[107px]' },
   { key: 'status', label: 'Status', width: 'w-[92px]' },
   { key: 'facility', label: 'Facility', width: 'w-[160px]' },
@@ -665,8 +609,8 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   const someSelected = selectedIds.size > 0 && !allSelected;
 
   return (
-    <main className="flex flex-1 min-w-0 min-h-0 bg-surface-variant relative overflow-hidden p-4 gap-3">
-      <div className={`flex flex-col min-h-0 min-w-0 bg-white rounded-lg overflow-hidden relative transition-all duration-200 ${isDetailOpen ? (tableCollapsed ? 'w-0 opacity-0 pointer-events-none p-0 border-0' : 'flex-1') : 'flex-1'}`}>
+    <main className="flex flex-1 min-w-0 min-h-0 relative overflow-hidden p-2">
+      <div className={`flex flex-col min-h-0 min-w-0 bg-white border border-outline overflow-hidden relative transition-all duration-200 ${isDetailOpen ? 'rounded-l-lg border-r-0' : 'rounded-lg'} ${isDetailOpen ? (tableCollapsed ? 'w-0 opacity-0 pointer-events-none p-0 border-0' : 'flex-1') : 'flex-1'}`}>
       {isDetailOpen && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-outline shrink-0">
           <span className="text-base font-medium text-text-primary">Authorization Table</span>
@@ -1000,11 +944,12 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                     {col.label}
                   </th>
                 ))}
-                {!isDetailOpen && (
-                  <th className="bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-right text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 shadow-[-2px_0_4px_rgba(0,0,0,0.08)]">
-                    Assignee
-                  </th>
-                )}
+                {/* box-shadow is not painted on cells in a border-collapse table,
+                    so the sticky edge shadow is drawn as a gradient overlay. */}
+                <th className="relative bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-right text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 z-20">
+                  <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
+                  Assignee
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1096,9 +1041,9 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                         </span>
                       </td>
 
-                      {/* Visits */}
-                      <td className="px-4 py-4 w-[120px]">
-                        <VisitsBarV2
+                      {/* Utilization */}
+                      <td className="px-4 py-4 w-[210px]">
+                        <UtilizationBar
                           authorized={record.visitsAuthorized}
                           completed={record.visitsCompleted}
                           scheduled={record.visitsScheduled}
@@ -1134,17 +1079,16 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                         </span>
                       </td>
 
-                      {!isDetailOpen && (
-                        <td className={`px-4 py-2 w-[100px] text-right sticky right-0 ${rowBg} border-l border-outline shadow-[-2px_0_4px_rgba(0,0,0,0.08)]`}>
-                          <AssigneeCell
-                            record={record}
-                            isOpen={assigneeDropdownId === record.id}
-                            onToggle={() => setAssigneeDropdownId((prev) => (prev === record.id ? null : record.id))}
-                            onAssign={(names) => handleAssignRecord(record.id, names)}
-                            onClose={() => setAssigneeDropdownId(null)}
-                          />
-                        </td>
-                      )}
+                      <td className={`relative px-4 py-2 w-[100px] text-right sticky right-0 z-10 ${rowBg} border-l border-outline`}>
+                        <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
+                        <AssigneeCell
+                          record={record}
+                          isOpen={assigneeDropdownId === record.id}
+                          onToggle={() => setAssigneeDropdownId((prev) => (prev === record.id ? null : record.id))}
+                          onAssign={(names) => handleAssignRecord(record.id, names)}
+                          onClose={() => setAssigneeDropdownId(null)}
+                        />
+                      </td>
                     </tr>
                   );
                 });
@@ -1179,7 +1123,6 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
           onDeleteNote={handleDeleteNote}
           tableCollapsed={tableCollapsed}
           onExpandTable={() => setTableCollapsed(false)}
-          separated
         />
       )}
 

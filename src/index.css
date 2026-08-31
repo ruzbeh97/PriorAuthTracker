@@ -23,6 +23,11 @@
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --color-primary: #1132ee;
   --color-primary-hover: #0e28be;
+  /* App shell tokens (Figma: bg/solid/tonal, fg/primary, fg/secondary, fg/tertiary) */
+  --color-shell: #f1f3fe;
+  --color-shell-fg: #1f1f1f;
+  --color-shell-fg-muted: #454545;
+  --color-shell-fg-subtle: #737373;
   --color-surface: #ffffff;
   --color-surface-variant: #f7f7f7;
   --color-outline: #e6e6e6;

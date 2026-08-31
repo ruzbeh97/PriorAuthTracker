@@ -25,14 +25,14 @@ export default function Toolbar({ activeTab, onTabChange, onCreateAuth, filterOp
               onClick={onToggleFilter}
               className={`inline-flex items-center gap-1.5 px-3.5 py-[3px] h-7 rounded-full text-sm font-medium transition-colors ${
                 filterOpen || activeFilterCount > 0
-                  ? 'bg-primary text-white hover:bg-primary-hover'
-                  : 'border border-primary text-primary hover:bg-primary/5'
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'border border-green-600 text-green-600 hover:bg-green-50'
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
               Filter
               {activeFilterCount > 0 && (
-                <span className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold bg-white text-primary">
+                <span className="ml-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold bg-white text-green-600">
                   {activeFilterCount}
                 </span>
               )}

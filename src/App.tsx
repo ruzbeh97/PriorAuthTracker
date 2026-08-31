@@ -29,7 +29,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activePage, setActivePage] = useState('Prior Auth Tracker 1');
+  const [activePage, setActivePage] = useState('Prior Auth Tracker 2');
   const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
   const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
   const clearSelectionRef = useRef<(() => void) | null>(null);
@@ -302,7 +302,7 @@ export default function App() {
   const allTags = useMemo(() => [...new Set(records.flatMap((r) => r.tags))].sort(), [records]);
 
   return (
-    <div className="flex h-screen bg-surface-variant overflow-hidden">
+    <div className="flex h-screen bg-shell overflow-hidden">
       <Sidebar collapsed={!sidebarOpen} activePage={activePage} onPageChange={setActivePage} onExpand={() => setSidebarOpen(true)} />
       <div className="flex flex-col flex-1 min-w-0 h-full">
         <Header
@@ -311,13 +311,17 @@ export default function App() {
           onNavigateRecord={(dir) => navigateRecordRef.current?.(dir)}
           onBackToTable={() => clearSelectionRef.current?.()}
         />
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 pr-2 pb-2">
           {activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
               onSelectedRecordChange={handleSelectedRecordChange}
               registerNavigate={handleRegisterNavigate}
               registerClearSelection={handleRegisterClearSelection}
             />
+          ) : activePage !== 'Prior Auth Tracker 1' ? (
+            <main className="flex flex-1 min-w-0 min-h-0 items-center justify-center bg-white border border-black/10 rounded-lg">
+              <p className="text-[13px] text-shell-fg-subtle">{activePage}</p>
+            </main>
           ) : (
           <>
           <main className="flex flex-col flex-1 min-w-0 min-h-0 bg-white relative overflow-hidden transition-all duration-200">
