@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@visit-note/patient-chart": "file:../Multi-Panel Visit Note/packages/patient-chart",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

@@ -19,6 +19,7 @@ interface DetailHeaderInfo {
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  activePage: string;
   detailHeaderInfo?: DetailHeaderInfo | null;
   onNavigateRecord?: (dir: 'prev' | 'next') => void;
   onBackToTable?: () => void;
@@ -26,10 +27,13 @@ interface HeaderProps {
 
 export default function Header({
   onToggleSidebar,
+  activePage,
   detailHeaderInfo,
   onNavigateRecord,
   onBackToTable,
 }: HeaderProps) {
+  const patientsPage = activePage === 'Patients';
+
   return (
     <header className="flex items-center gap-2 h-9 px-2 bg-shell shrink-0">
       <button
@@ -41,12 +45,16 @@ export default function Header({
       </button>
 
       <nav className="flex items-center gap-1.5 shrink-0 text-[13px]">
-        <button
-          onClick={onBackToTable}
-          className="text-shell-fg-subtle hover:text-shell-fg transition-colors"
-        >
-          Daily Operations
-        </button>
+        {patientsPage ? (
+          <span className="text-shell-fg-subtle">Medical Records</span>
+        ) : (
+          <button
+            onClick={onBackToTable}
+            className="text-shell-fg-subtle hover:text-shell-fg transition-colors"
+          >
+            Daily Operations
+          </button>
+        )}
         <span className="text-shell-fg-subtle/60">/</span>
         {detailHeaderInfo ? (
           <>
@@ -61,7 +69,9 @@ export default function Header({
             <span className="text-shell-fg-subtle">{detailHeaderInfo.authNumber}</span>
           </>
         ) : (
-          <span className="font-medium text-shell-fg">Prior Authorizations</span>
+          <span className="font-medium text-shell-fg">
+            {patientsPage ? 'Patients' : 'Prior Authorizations'}
+          </span>
         )}
       </nav>
 

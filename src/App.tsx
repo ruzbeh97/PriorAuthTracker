@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { lazy, Suspense, useState, useCallback, useMemo, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Scorecards from './components/Scorecards';
@@ -15,6 +15,11 @@ import AuthDetailPanel from './components/AuthDetailPanel';
 import PriorAuthTracker2 from './components/PriorAuthTracker2';
 import { mockAuthRecords } from './data';
 import type { AuthRecord, AuthState, TimelineEntry } from './types';
+
+const PatientChartPage = lazy(async () => {
+  const { PatientChartPage: Page } = await import('@visit-note/patient-chart');
+  return { default: Page };
+});
 
 export default function App() {
   const [records, setRecords] = useState<AuthRecord[]>(mockAuthRecords);
@@ -307,12 +312,23 @@ export default function App() {
       <div className="flex flex-col flex-1 min-w-0 h-full">
         <Header
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
+          activePage={activePage}
           detailHeaderInfo={activePage === 'Prior Auth Tracker 2' ? detailHeaderInfo : null}
           onNavigateRecord={(dir) => navigateRecordRef.current?.(dir)}
           onBackToTable={() => clearSelectionRef.current?.()}
         />
         <div className="flex flex-1 min-h-0 pr-2 pb-2">
-          {activePage === 'Prior Auth Tracker 2' ? (
+          {activePage === 'Patients' ? (
+            <Suspense
+              fallback={
+                <main className="flex flex-1 min-w-0 min-h-0 items-center justify-center bg-white border border-black/10 rounded-lg">
+                  <p className="text-[13px] text-shell-fg-subtle">Loading patient chart…</p>
+                </main>
+              }
+            >
+              <PatientChartPage />
+            </Suspense>
+          ) : activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
               onSelectedRecordChange={handleSelectedRecordChange}
               registerNavigate={handleRegisterNavigate}

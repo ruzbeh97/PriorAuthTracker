@@ -80,7 +80,7 @@ function AvatarGroup({ assignedTo }: { assignedTo: string }) {
 
   if (people.length === 0) {
     return (
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-center">
         <div className="w-[26px] h-[26px] rounded-full border-2 border-dashed border-black/20 flex items-center justify-center text-text-secondary">
           <UserPlus className="w-3.5 h-3.5" strokeWidth={1.5} />
         </div>
@@ -89,7 +89,7 @@ function AvatarGroup({ assignedTo }: { assignedTo: string }) {
   }
 
   return (
-    <div className="flex items-center justify-end -space-x-2">
+    <div className="flex items-center justify-center -space-x-2">
       {people.map((name, i) => {
         const initial = name.charAt(0).toUpperCase();
         const color = TEAM_COLOR_MAP[name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
@@ -245,7 +245,7 @@ function AssigneeCell({
   const displayName = [...liveSelected].join(', ');
 
   return (
-    <div className="relative">
+    <div className="relative flex justify-center">
       <button ref={btnRef} onClick={onToggle} className="cursor-pointer">
         <AvatarGroup assignedTo={isOpen ? displayName : record.assignedTo} />
       </button>
@@ -946,7 +946,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                 ))}
                 {/* box-shadow is not painted on cells in a border-collapse table,
                     so the sticky edge shadow is drawn as a gradient overlay. */}
-                <th className="relative bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-right text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 z-20">
+                <th className="relative bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-center text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 z-20">
                   <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
                   Assignee
                 </th>
@@ -1079,7 +1079,7 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
                         </span>
                       </td>
 
-                      <td className={`relative px-4 py-2 w-[100px] text-right sticky right-0 z-10 ${rowBg} border-l border-outline`}>
+                      <td className={`relative px-4 py-2 w-[100px] text-center sticky right-0 z-10 ${rowBg} border-l border-outline`}>
                         <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
                         <AssigneeCell
                           record={record}

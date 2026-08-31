@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../node_modules/@visit-note/patient-chart/src/**/*.{ts,tsx}";
 
 @font-face {
   font-family: 'Satoshi';
@@ -21,8 +22,16 @@
 
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
+  --font-body: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
   --color-primary: #1132ee;
   --color-primary-hover: #0e28be;
+  --color-accent-500: #1132ee;
+  --color-accent-550: #0f2dd7;
+  --color-accent-700: #0a1e8f;
+  --color-accent1-default: #181b1b;
+  --color-accent1-800: #303536;
+  --color-orange-400: #ffad33;
   /* App shell tokens (Figma: bg/solid/tonal, fg/primary, fg/secondary, fg/tertiary) */
   --color-shell: #f1f3fe;
   --color-shell-fg: #1f1f1f;
@@ -30,10 +39,23 @@
   --color-shell-fg-subtle: #737373;
   --color-surface: #ffffff;
   --color-surface-variant: #f7f7f7;
+  --color-surface-tonal: #f1f3fe;
+  --color-surface-hover: #f7f7f7;
+  --color-surface-active: rgba(17, 50, 238, 0.08);
+  --color-inverse-surface: #1a1a1a;
   --color-outline: #e6e6e6;
+  --color-neutral-200: #cccccc;
+  --color-neutral-600: #666666;
+  --color-neutral-900: #1a1a1a;
   --color-text-primary: #1a1a1a;
   --color-text-secondary: #666666;
   --color-text-tertiary: #4b5563;
+  --color-text-disabled: #808080;
+  --color-text-disabled-2: #b3b3b3;
+  --color-fg-primary: #1f1f1f;
+  --color-fg-secondary: #454545;
+  --color-fg-tertiary: #737373;
+  --color-fg-accent: #1132ee;
   --color-status-active: #22c55e;
   --color-status-expiring: #f59e0b;
   --color-status-expired: #ef4444;
@@ -58,4 +80,44 @@ body {
 
 .animate-slide-in {
   animation: slide-in-right 0.2s ease-out;
+}
+
+@layer utilities {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }

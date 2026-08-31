@@ -367,22 +367,33 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
               </div>
             </div>
             {trackingType === 'CPTs' ? (
-              cptEntries.map((entry, i) => (
-                <CptTrackingBlock
-                  key={entry.id}
-                  entry={entry}
-                  onChange={(next) =>
-                    setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
-                  }
-                  onDelete={() =>
-                    setCptEntries((prev) => {
-                      const remaining = prev.filter((e) => e.id !== entry.id);
-                      return remaining.length > 0 ? remaining : [emptyCptEntry()];
-                    })
-                  }
-                  onAdd={i === cptEntries.length - 1 ? () => setCptEntries((prev) => [...prev, emptyCptEntry()]) : undefined}
-                />
-              ))
+              <>
+                {cptEntries.map((entry) => (
+                  <CptTrackingBlock
+                    key={entry.id}
+                    entry={entry}
+                    onChange={(next) =>
+                      setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
+                    }
+                    onDelete={() =>
+                      setCptEntries((prev) => {
+                        const remaining = prev.filter((e) => e.id !== entry.id);
+                        return remaining.length > 0 ? remaining : [emptyCptEntry()];
+                      })
+                    }
+                  />
+                ))}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCptEntries((prev) => [...prev, emptyCptEntry()])}
+                    className="p-0 text-primary hover:text-primary-hover transition-colors"
+                    title="Add CPT"
+                  >
+                    <Plus className="w-4 h-4" strokeWidth={1.75} />
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <DetailRow label="Visits Authorized" value={String(record.visitsAuthorized)} />
@@ -1692,8 +1703,24 @@ function DemoRow({ label, value, copyable }: { label: string; value: string; cop
   );
 }
 
-const CPT_CODES = ['97110', '97112', '97116', '97140', '97530', '97535', '97750'];
-const CPT_UNIT_TYPES = ['Units', 'Visits', 'Claims'];
+interface CptSelectOption {
+  value: string;
+  description?: string;
+}
+
+const CPT_CODES: CptSelectOption[] = [
+  { value: '97110', description: 'Therapeutic exercises' },
+  { value: '97112', description: 'Neuromuscular reeducation' },
+  { value: '97116', description: 'Gait training' },
+  { value: '97140', description: 'Manual therapy' },
+  { value: '97530', description: 'Therapeutic activities' },
+  { value: '97535', description: 'Self-care / home management training' },
+  { value: '97750', description: 'Physical performance test' },
+];
+const CPT_UNIT_TYPES: CptSelectOption[] = [
+  { value: 'Units' },
+  { value: 'Visits' },
+];
 
 interface CptEntry {
   id: string;
@@ -1714,7 +1741,7 @@ function CptFieldSelect({
 }: {
   value: string;
   placeholder: string;
-  options: string[];
+  options: CptSelectOption[];
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1733,7 +1760,11 @@ function CptFieldSelect({
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
 
-  const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+  const q = search.toLowerCase();
+  const filtered = options.filter((o) =>
+    o.value.toLowerCase().includes(q) || (o.description?.toLowerCase().includes(q) ?? false)
+  );
+  const selected = options.find((o) => o.value === value);
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
@@ -1743,7 +1774,11 @@ function CptFieldSelect({
         className="w-full h-7 flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-lg bg-surface-variant"
       >
         <span className={`text-sm truncate ${value ? 'text-text-primary' : 'text-[#808080]'}`}>
-          {value || placeholder}
+          {selected
+            ? selected.description
+              ? `${selected.value} — ${selected.description}`
+              : selected.value
+            : placeholder}
         </span>
         <ChevronDown className={`w-[18px] h-[18px] text-text-secondary shrink-0 ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
       </button>
@@ -1765,12 +1800,17 @@ function CptFieldSelect({
             ) : (
               filtered.map((opt) => (
                 <button
-                  key={opt}
+                  key={opt.value}
                   type="button"
-                  onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
-                  className={`w-full text-left px-2 py-1.5 text-sm transition-colors ${opt === value ? 'bg-primary/5 text-primary font-medium' : 'text-text-primary hover:bg-surface-variant'}`}
+                  onClick={() => { onChange(opt.value); setOpen(false); setSearch(''); }}
+                  className={`w-full text-left px-2 py-1.5 transition-colors ${opt.value === value ? 'bg-primary/5 text-primary' : 'text-text-primary hover:bg-surface-variant'}`}
                 >
-                  {opt}
+                  <span className="block text-sm font-medium">{opt.value}</span>
+                  {opt.description && (
+                    <span className={`block text-xs mt-0.5 ${opt.value === value ? 'text-primary/80' : 'text-text-secondary'}`}>
+                      {opt.description}
+                    </span>
+                  )}
                 </button>
               ))
             )}
@@ -1785,12 +1825,10 @@ function CptTrackingBlock({
   entry,
   onChange,
   onDelete,
-  onAdd,
 }: {
   entry: CptEntry;
   onChange: (next: CptEntry) => void;
   onDelete: () => void;
-  onAdd?: () => void;
 }) {
   return (
     <div className="flex gap-2.5 w-full pb-0.5 border-b border-outline last:border-b-0">
@@ -1830,19 +1868,7 @@ function CptTrackingBlock({
             className="flex-1 min-w-0 h-7 px-1.5 py-0.5 rounded-lg bg-surface-variant text-sm text-text-primary placeholder:text-[#808080] focus:outline-none"
           />
         </div>
-        <div className="flex items-center justify-between">
-          {onAdd ? (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="p-0 text-primary hover:text-primary-hover transition-colors"
-              title="Add CPT"
-            >
-              <Plus className="w-4 h-4" strokeWidth={1.75} />
-            </button>
-          ) : (
-            <span />
-          )}
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={onDelete}
