@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../node_modules/@visit-note/patient-chart/src/**/*.{ts,tsx}";
+@source "../vendor/multi-panel-visit-note/packages/patient-chart/src/**/*.{ts,tsx}";
 
 @font-face {
   font-family: 'Satoshi';

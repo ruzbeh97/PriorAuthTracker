@@ -8,6 +8,14 @@
     "skipLibCheck": true,
     "preserveSymlinks": true,
 
+    /* Chart package: sibling checkout when present, git submodule otherwise */
+    "paths": {
+      "@visit-note/patient-chart": [
+        "./node_modules/@visit-note/patient-chart/src/index.ts",
+        "./vendor/multi-panel-visit-note/packages/patient-chart/src/index.ts"
+      ]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

@@ -1,0 +1,3 @@
+[submodule "vendor/multi-panel-visit-note"]
+	path = vendor/multi-panel-visit-note
+	url = https://github.com/ruzbeh97/Multi-Panel-Visit-Note.git
