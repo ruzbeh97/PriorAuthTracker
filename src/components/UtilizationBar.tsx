@@ -28,6 +28,12 @@ export default function UtilizationBar({
   const span = Math.max(authorized, used) || 1;
   const pct = (n: number) => `${(n / span) * 100}%`;
 
+  // A zero allowance has no capacity to mark, so the outline would collapse to
+  // its own left border and read as a stray tick beside the fills. An untouched
+  // authorization still draws the full track so the cell reads as an empty bar.
+  const outlineWidth = authorized > 0 ? pct(authorized) : '100%';
+  const showOutline = authorized > 0 || used === 0;
+
   const claimedColor = '#16a34a';
   const completedColor = exceeded ? '#e91916' : '#3b82f6';
   const scheduledColor = exceeded ? '#f6a3a2' : '#93c5fd';
@@ -74,12 +80,14 @@ export default function UtilizationBar({
       <div className={`relative w-full ${trackHeight}`}>
         {/* Capacity outline marks the authorized allowance. It drops its right
             edge once usage overflows so the fills read as running past the limit. */}
-        <div
-          className={`absolute inset-y-0 left-0 border-y border-l border-[#8c8c8c] rounded-l-full ${
-            exceeded ? '' : 'border-r rounded-r-full'
-          }`}
-          style={{ width: pct(authorized) }}
-        />
+        {showOutline && (
+          <div
+            className={`absolute inset-y-0 left-0 border-y border-l border-[#8c8c8c] rounded-l-full ${
+              exceeded ? '' : 'border-r rounded-r-full'
+            }`}
+            style={{ width: outlineWidth }}
+          />
+        )}
         {/* Fills are layered rather than laid end-to-end: each starts at the left
             edge and runs to its cumulative total, so the rounded cap of a shorter
             segment sits on top of the one behind it with no gap. */}

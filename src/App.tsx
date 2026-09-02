@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback, useMemo, useRef } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Scorecards from './components/Scorecards';
@@ -21,6 +21,33 @@ const PatientChartPage = lazy(async () => {
   return { default: Page };
 });
 
+const OrdersPage = lazy(async () => {
+  const { OrdersPage: Page } = await import('@visit-note/patient-chart');
+  return { default: Page };
+});
+
+const ORDER_AUTHORIZATIONS_EVENT = 'patient-chart:order-authorizations';
+
+type OrderAuthorizationEventDetail = {
+  groups: Array<{
+    id: string;
+    patient: {
+      name: string;
+      dob: string;
+      mrn: string;
+      insurance: string;
+    };
+    provider: string;
+    orders: Array<{
+      id: string;
+      title: string;
+      code: string;
+      trackingType: 'Units';
+      units: string;
+    }>;
+  }>;
+};
+
 export default function App() {
   const [records, setRecords] = useState<AuthRecord[]>(mockAuthRecords);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -35,9 +62,52 @@ export default function App() {
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('Prior Auth Tracker 2');
+  const [orderAuthRecords, setOrderAuthRecords] = useState<AuthRecord[]>([]);
   const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
   const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
   const clearSelectionRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    function syncOrderAuthorizations(event: Event) {
+      const { groups } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
+      setOrderAuthRecords(
+        groups.map((group) => ({
+          id: `order-auth-${group.id}`,
+          patient: {
+            name: group.patient.name,
+            dob: group.patient.dob,
+            mrn: group.patient.mrn,
+          },
+          authNumber: '',
+          payer: { name: group.patient.insurance, planId: '' },
+          startDate: '',
+          endDate: '',
+          visitsAuthorized: 0,
+          visitsCompleted: 0,
+          visitsScheduled: 0,
+          state: 'Not Started',
+          status: 'Needs Auth',
+          facility: 'MAIN OFFICE',
+          provider: group.provider,
+          assignedTo: 'Unassigned',
+          tags: ['ORDER AUTHORIZATION'],
+          notes: [],
+          orderBased: true,
+          orderGroupId: group.id,
+          orderCpts: group.orders.map((order) => ({
+            orderId: order.id,
+            orderTitle: order.title,
+            code: order.code,
+            trackingType: order.trackingType,
+            units: order.units,
+          })),
+        })),
+      );
+    }
+
+    window.addEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
+    return () => window.removeEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
+  }, []);
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
 
@@ -328,8 +398,21 @@ export default function App() {
             >
               <PatientChartPage />
             </Suspense>
+          ) : activePage === 'Order Manager' ? (
+            <Suspense
+              fallback={
+                <main className="flex flex-1 min-w-0 min-h-0 items-center justify-center bg-white border border-black/10 rounded-lg">
+                  <p className="text-[13px] text-shell-fg-subtle">Loading orders…</p>
+                </main>
+              }
+            >
+              <main className="flex flex-1 min-w-0 min-h-0 overflow-hidden rounded-lg border border-black/10 bg-white">
+                <OrdersPage siteWide />
+              </main>
+            </Suspense>
           ) : activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
+              orderAuthRecords={orderAuthRecords}
               onSelectedRecordChange={handleSelectedRecordChange}
               registerNavigate={handleRegisterNavigate}
               registerClearSelection={handleRegisterClearSelection}

@@ -33,6 +33,9 @@ export default function Header({
   onBackToTable,
 }: HeaderProps) {
   const patientsPage = activePage === 'Patients';
+  const orderManagerPage = activePage === 'Order Manager';
+  const sectionLabel = patientsPage || orderManagerPage ? 'Medical Records' : 'Daily Operations';
+  const pageLabel = patientsPage ? 'Patients' : orderManagerPage ? 'Order Manager' : 'Prior Authorizations';
 
   return (
     <header className="flex items-center gap-2 h-9 px-2 bg-shell shrink-0">
@@ -45,8 +48,8 @@ export default function Header({
       </button>
 
       <nav className="flex items-center gap-1.5 shrink-0 text-[13px]">
-        {patientsPage ? (
-          <span className="text-shell-fg-subtle">Medical Records</span>
+        {patientsPage || orderManagerPage ? (
+          <span className="text-shell-fg-subtle">{sectionLabel}</span>
         ) : (
           <button
             onClick={onBackToTable}
@@ -70,7 +73,7 @@ export default function Header({
           </>
         ) : (
           <span className="font-medium text-shell-fg">
-            {patientsPage ? 'Patients' : 'Prior Authorizations'}
+            {pageLabel}
           </span>
         )}
       </nav>

@@ -66,12 +66,27 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   const [newNote, setNewNote] = useState('');
   const [trackingType, setTrackingType] = useState<'Visits' | 'CPTs'>('Visits');
   const [cptEntries, setCptEntries] = useState<CptEntry[]>([emptyCptEntry()]);
+  const orderCptOptions = useMemo<CptSelectOption[]>(() => {
+    const fromOrders = (record.orderCpts ?? [])
+      .filter((entry) => entry.code && !CPT_CODES.some((option) => option.value === entry.code))
+      .map((entry) => ({
+        value: entry.code,
+        description: entry.orderTitle.replace(/ \([^)]+ Order\)$/, ''),
+      }));
+    return [...fromOrders, ...CPT_CODES];
+  }, [record.orderCpts]);
   const [portalCurrentUrl, setPortalCurrentUrl] = useState('');
   const [portalAddressValue, setPortalAddressValue] = useState('');
   const initializedForRef = useRef<string | null>(null);
 
-  if (initializedForRef.current !== record.id) {
-    initializedForRef.current = record.id;
+  // Re-sync when the note's codes or units change, not just when a different row is picked.
+  const initKey = [
+    record.id,
+    ...(record.orderCpts ?? []).map((entry) => `${entry.orderId}:${entry.code}:${entry.units}`),
+  ].join('|');
+
+  if (initializedForRef.current !== initKey) {
+    initializedForRef.current = initKey;
     const completedOverage = Math.max(0, record.visitsCompleted - record.visitsAuthorized);
     const totalExceeded = record.visitsCompleted + record.visitsScheduled > record.visitsAuthorized;
     if (totalExceeded && completedOverage > 0) {
@@ -88,8 +103,17 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
     } else {
       setScheduledAppts([]);
     }
-    setTrackingType('Visits');
-    setCptEntries([emptyCptEntry()]);
+    setTrackingType(record.orderBased ? 'CPTs' : 'Visits');
+    setCptEntries(
+      record.orderBased && record.orderCpts?.length
+        ? record.orderCpts.map((entry) => ({
+            id: `cpt-${entry.orderId}`,
+            code: entry.code,
+            unitTrackingType: entry.trackingType,
+            units: entry.units,
+          }))
+        : [emptyCptEntry()],
+    );
   }
 
   const pastDateOptions = generateExceededAppointments(8, 3, 20);
@@ -348,30 +372,33 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             <DetailRow label="Payer ID" value={`${record.payer.name}IL: ${record.payer.planId}`} copyable />
             <EditableDetailRow editing={editing} label="Start Date" value={record.startDate || '--'} editValue={editFields['Start Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'Start Date': v }))} />
             <EditableDetailRow editing={editing} label="End Date" value={record.endDate || '--'} editValue={editFields['End Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'End Date': v }))} />
-            <div className="flex items-center gap-2 py-0.5">
-              <span className="w-[150px] shrink-0 text-xs text-text-secondary">Tracking Type</span>
-              <div className="inline-flex items-center p-0.5 rounded-lg bg-surface-variant">
-                {(['Visits', 'CPTs'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTrackingType(t)}
-                    className={`px-2.5 h-6 rounded-md text-xs font-medium transition-colors ${
-                      trackingType === t
-                        ? 'bg-white text-primary shadow-sm'
-                        : 'text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+            {!record.orderBased && (
+              <div className="flex items-center gap-2 py-0.5">
+                <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
+                <div className="inline-flex items-center p-0.5 rounded-lg bg-surface-variant">
+                  {(['Visits', 'CPTs'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTrackingType(t)}
+                      className={`px-2.5 h-6 rounded-md text-xs font-medium transition-colors ${
+                        trackingType === t
+                          ? 'bg-white text-primary shadow-sm'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            {trackingType === 'CPTs' ? (
+            )}
+            {record.orderBased || trackingType === 'CPTs' ? (
               <>
                 {cptEntries.map((entry) => (
                   <CptTrackingBlock
                     key={entry.id}
                     entry={entry}
+                    codeOptions={orderCptOptions}
                     onChange={(next) =>
                       setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
                     }
@@ -383,16 +410,18 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                     }
                   />
                 ))}
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setCptEntries((prev) => [...prev, emptyCptEntry()])}
-                    className="p-0 text-primary hover:text-primary-hover transition-colors"
-                    title="Add CPT"
-                  >
-                    <Plus className="w-4 h-4" strokeWidth={1.75} />
-                  </button>
-                </div>
+                {!record.orderBased && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setCptEntries((prev) => [...prev, emptyCptEntry()])}
+                      className="p-0 text-primary hover:text-primary-hover transition-colors"
+                      title="Add CPT"
+                    >
+                      <Plus className="w-4 h-4" strokeWidth={1.75} />
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -402,17 +431,17 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                 <DetailRow label="Remaining Visits" value={visitsRemaining > 0 ? `${visitsRemaining} (${unscheduled} unscheduled)` : '0'} />
                 {record.confidence && (
                   <div className="flex items-center gap-2 py-0.5">
-                    <span className="w-[150px] shrink-0 text-xs text-text-secondary">Confidence</span>
+                    <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Confidence</span>
                     <div className="flex items-center gap-1">
                       <CheckCircle className="w-5 h-5 text-status-active" strokeWidth={1.5} />
-                      <span className="text-xs font-medium text-text-primary">{record.confidence}</span>
+                      <span className="text-sm leading-[22px] text-text-disabled">{record.confidence}</span>
                     </div>
                   </div>
                 )}
               </>
             )}
             <div className="flex items-start gap-2 py-1">
-              <span className="w-[150px] shrink-0 text-xs text-text-secondary">State</span>
+              <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
               <span className="px-2 py-0.5 bg-primary/10 rounded-lg text-xs font-medium text-primary">
                 {record.state}
               </span>
@@ -426,20 +455,36 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         {/* Divider */}
         <div className="my-3 border-t border-outline" />
 
-        {/* Visit Utilization */}
-        <div className="px-4">
-          <p className="text-sm font-medium text-text-primary mb-2">Visit Utilization</p>
-          {(record.visitsAuthorized > 0 || record.visitsCompleted > 0 || record.visitsScheduled > 0) ? (
-            <UtilizationBar
-              layout="row"
-              authorized={record.visitsAuthorized}
-              completed={record.visitsCompleted}
-              scheduled={record.visitsScheduled}
-            />
-          ) : (
-            <span className="text-sm text-text-secondary">--</span>
-          )}
-        </div>
+        {record.orderBased ? (
+          <div className="px-4">
+            <p className="text-sm font-medium text-text-primary mb-2">CPT Codes</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(record.orderCpts ?? []).map((entry) => (
+                <span
+                  key={entry.orderId}
+                  title={entry.orderTitle}
+                  className="inline-flex h-7 items-center rounded-lg bg-primary/10 px-2.5 text-xs font-medium text-primary"
+                >
+                  {entry.code || 'No CPT'}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="px-4">
+            <p className="text-sm font-medium text-text-primary mb-2">Visit Utilization</p>
+            {(record.visitsAuthorized > 0 || record.visitsCompleted > 0 || record.visitsScheduled > 0) ? (
+              <UtilizationBar
+                layout="row"
+                authorized={record.visitsAuthorized}
+                completed={record.visitsCompleted}
+                scheduled={record.visitsScheduled}
+              />
+            ) : (
+              <span className="text-sm text-text-secondary">--</span>
+            )}
+          </div>
+        )}
 
         {/* Completed Appointments section */}
         {completedAppts.length > 0 && (
@@ -1694,9 +1739,9 @@ function NewCaseDrawer({ onClose, initialData }: { onClose: () => void; initialD
 function DemoRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
-      <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-xs font-medium text-text-primary truncate">{value}</span>
+        <span className="text-sm leading-[22px] text-text-disabled truncate">{value}</span>
         {copyable && <CopyButton text={value} />}
       </div>
     </div>
@@ -1778,7 +1823,8 @@ function CptFieldSelect({
             ? selected.description
               ? `${selected.value} — ${selected.description}`
               : selected.value
-            : placeholder}
+            : // Codes arriving from an order won't be in the local catalog, so show them verbatim.
+              value || placeholder}
         </span>
         <ChevronDown className={`w-[18px] h-[18px] text-text-secondary shrink-0 ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
       </button>
@@ -1823,10 +1869,12 @@ function CptFieldSelect({
 
 function CptTrackingBlock({
   entry,
+  codeOptions = CPT_CODES,
   onChange,
   onDelete,
 }: {
   entry: CptEntry;
+  codeOptions?: CptSelectOption[];
   onChange: (next: CptEntry) => void;
   onDelete: () => void;
 }) {
@@ -1835,18 +1883,18 @@ function CptTrackingBlock({
       <div className="w-0.5 self-stretch rounded-full bg-primary shrink-0" />
       <div className="flex-1 min-w-0 flex flex-col gap-2 py-4">
         <div className="flex items-center gap-4">
-          <span className="w-40 shrink-0 text-base font-medium leading-5 text-[#0a1e8f]">CPT Code</span>
+          <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">CPT Code</span>
           <CptFieldSelect
             value={entry.code}
             placeholder="Select a CPT code"
-            options={CPT_CODES}
+            options={codeOptions}
             onChange={(code) => onChange({ ...entry, code })}
           />
         </div>
         <div className="flex items-start gap-4">
           <div className="w-40 shrink-0">
-            <p className="text-base font-medium leading-5 text-[#0a1e8f]">Tracking Type</p>
-            <p className="text-xs leading-[18px] text-text-secondary">
+            <p className="text-sm leading-[22px] text-accent-700">Tracking Type</p>
+            <p className="text-xs font-medium leading-[18px] text-text-secondary">
               Counts every unit of each selected CPT code used in claims
             </p>
           </div>
@@ -1858,7 +1906,7 @@ function CptTrackingBlock({
           />
         </div>
         <div className="flex items-center gap-4">
-          <span className="w-40 shrink-0 text-base font-medium leading-5 text-[#0a1e8f]">Units</span>
+          <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">Units</span>
           <input
             type="text"
             inputMode="numeric"
@@ -1886,9 +1934,9 @@ function CptTrackingBlock({
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
-      <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-xs font-medium text-text-primary truncate">{value}</span>
+        <span className="text-sm leading-[22px] text-text-disabled truncate">{value}</span>
         {copyable && <CopyButton text={value} />}
       </div>
     </div>
@@ -1988,7 +2036,7 @@ function EditableDetailRow({ editing, label, value, editValue, onChange, copyabl
   if (editing) {
     return (
       <div className="flex items-center gap-2 py-0.5">
-        <span className="w-[150px] shrink-0 text-xs text-text-secondary">{label}</span>
+        <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
         {options ? (
           <EditableSelect value={editValue ?? value} onChange={onChange} options={options} />
         ) : (
@@ -1996,7 +2044,7 @@ function EditableDetailRow({ editing, label, value, editValue, onChange, copyabl
             type="text"
             value={editValue ?? value}
             onChange={(e) => onChange(e.target.value)}
-            className="flex-1 min-w-0 text-xs font-medium text-text-primary border border-outline rounded px-2 py-1 focus:outline-none focus:border-primary"
+            className="flex-1 min-w-0 text-sm leading-[22px] text-text-primary border border-outline rounded px-2 py-1 focus:outline-none focus:border-primary"
           />
         )}
       </div>
@@ -2029,7 +2077,7 @@ function EditableSelect({ value, onChange, options }: { value: string; onChange:
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full flex items-center gap-1 text-xs font-medium text-text-primary border rounded px-2 py-1 bg-white transition-colors ${open ? 'border-primary' : 'border-outline hover:border-primary/40'}`}
+        className={`w-full flex items-center gap-1 text-sm leading-[22px] text-text-primary border rounded px-2 py-1 bg-white transition-colors ${open ? 'border-primary' : 'border-outline hover:border-primary/40'}`}
       >
         <span className={`flex-1 truncate text-left ${value ? '' : 'text-text-secondary'}`}>
           {value || 'Select...'}

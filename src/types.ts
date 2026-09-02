@@ -54,6 +54,16 @@ export interface AuthRecord {
   notes: NoteEntry[];
   timeline?: TimelineEntry[];
   confidence?: 'Confirmed' | 'Pending' | 'Unverified';
+  /** Present when this authorization was generated from visit-note orders. */
+  orderBased?: boolean;
+  orderGroupId?: string;
+  orderCpts?: Array<{
+    orderId: string;
+    orderTitle: string;
+    code: string;
+    trackingType: 'Units';
+    units: string;
+  }>;
 }
 
 export const AUTH_STATES: AuthState[] = [

@@ -29,6 +29,22 @@ function StateChip({ state }: { state: string }) {
   );
 }
 
+function OrderCptChips({ record }: { record: AuthRecord }) {
+  return (
+    <div className="flex max-w-[190px] flex-wrap gap-1">
+      {(record.orderCpts ?? []).map((entry) => (
+        <span
+          key={entry.orderId}
+          title={entry.orderTitle}
+          className="inline-flex h-6 items-center rounded-md bg-primary/10 px-2 text-xs font-medium text-primary"
+        >
+          {entry.code || 'No CPT'}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function StatusDot({ status }: { status: string }) {
   const color = status === 'Active' ? 'bg-[#479e4c]' : status === 'Expired' ? 'bg-[#ee4744]' : 'bg-[#f59e0b]';
   return (
@@ -343,12 +359,18 @@ interface SavedView {
 }
 
 interface PriorAuthTracker2Props {
+  orderAuthRecords?: AuthRecord[];
   onSelectedRecordChange?: (record: AuthRecord | null, index: number, total: number) => void;
   registerNavigate?: (fn: (dir: 'prev' | 'next') => void) => void;
   registerClearSelection?: (fn: () => void) => void;
 }
 
-export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavigate, registerClearSelection }: PriorAuthTracker2Props) {
+export default function PriorAuthTracker2({
+  orderAuthRecords = [],
+  onSelectedRecordChange,
+  registerNavigate,
+  registerClearSelection,
+}: PriorAuthTracker2Props) {
   const [records, setRecords] = useState<AuthRecord[]>(mockAuthRecords);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set(['Diana Morales|06/14/1998']));
@@ -368,6 +390,19 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [tableCollapsed, setTableCollapsed] = useState(false);
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    setRecords((current) => [
+      ...orderAuthRecords,
+      ...current.filter((record) => !record.orderBased),
+    ]);
+    setSelectedRecordId((current) =>
+      current?.startsWith('order-auth-') &&
+      !orderAuthRecords.some((record) => record.id === current)
+        ? null
+        : current,
+    );
+  }, [orderAuthRecords]);
 
   const handleCreateAuth = useCallback((form: CreateAuthForm) => {
     const newRecord: AuthRecord = {
@@ -1043,11 +1078,15 @@ export default function PriorAuthTracker2({ onSelectedRecordChange, registerNavi
 
                       {/* Utilization */}
                       <td className="px-4 py-4 w-[210px]">
-                        <UtilizationBar
-                          authorized={record.visitsAuthorized}
-                          completed={record.visitsCompleted}
-                          scheduled={record.visitsScheduled}
-                        />
+                        {record.orderBased ? (
+                          <OrderCptChips record={record} />
+                        ) : (
+                          <UtilizationBar
+                            authorized={record.visitsAuthorized}
+                            completed={record.visitsCompleted}
+                            scheduled={record.visitsScheduled}
+                          />
+                        )}
                       </td>
 
                       <td className="px-4 py-2 w-[107px]">
