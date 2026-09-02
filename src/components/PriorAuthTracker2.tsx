@@ -343,7 +343,7 @@ const TABLE_COLUMNS_FULL = [
   { key: 'payer', label: 'Payer', width: 'w-[105px]' },
   { key: 'start', label: 'Start', width: 'w-[93px]' },
   { key: 'end', label: 'End', width: 'w-[93px]' },
-  { key: 'utilization', label: 'Utilization', width: 'w-[210px]' },
+  { key: 'utilization', label: 'Utilization/Orders', width: 'w-[210px]' },
   { key: 'state', label: 'State', width: 'w-[107px]' },
   { key: 'status', label: 'Status', width: 'w-[92px]' },
   { key: 'facility', label: 'Facility', width: 'w-[160px]' },
@@ -392,9 +392,10 @@ export default function PriorAuthTracker2({
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
 
   useEffect(() => {
+    // Only rows synced from a note carry orderSource; seeded CPT rows must survive.
     setRecords((current) => [
       ...orderAuthRecords,
-      ...current.filter((record) => !record.orderBased),
+      ...current.filter((record) => !record.orderSource),
     ]);
     setSelectedRecordId((current) =>
       current?.startsWith('order-auth-') &&

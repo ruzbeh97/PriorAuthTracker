@@ -27,8 +27,21 @@ const OrdersPage = lazy(async () => {
 });
 
 const ORDER_AUTHORIZATIONS_EVENT = 'patient-chart:order-authorizations';
+const ORDER_AUTH_STORAGE_KEY = 'prior-auth:order-records';
+
+// No backend in the prototype, so order-driven rows persist across refreshes locally.
+function loadStoredOrderAuthRecords(): AuthRecord[] {
+  try {
+    const raw = window.localStorage.getItem(ORDER_AUTH_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? (parsed as AuthRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 type OrderAuthorizationEventDetail = {
+  source?: string;
   groups: Array<{
     id: string;
     patient: {
@@ -62,17 +75,16 @@ export default function App() {
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('Prior Auth Tracker 2');
-  const [orderAuthRecords, setOrderAuthRecords] = useState<AuthRecord[]>([]);
+  const [orderAuthRecords, setOrderAuthRecords] = useState<AuthRecord[]>(loadStoredOrderAuthRecords);
   const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
   const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
   const clearSelectionRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     function syncOrderAuthorizations(event: Event) {
-      const { groups } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
-      setOrderAuthRecords(
-        groups.map((group) => ({
-          id: `order-auth-${group.id}`,
+      const { groups, source = 'visit-note' } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
+      const sourceRecords: AuthRecord[] = groups.map((group) => ({
+          id: `order-auth-${source}-${group.id}`,
           patient: {
             name: group.patient.name,
             dob: group.patient.dob,
@@ -93,6 +105,7 @@ export default function App() {
           tags: ['ORDER AUTHORIZATION'],
           notes: [],
           orderBased: true,
+          orderSource: source,
           orderGroupId: group.id,
           orderCpts: group.orders.map((order) => ({
             orderId: order.id,
@@ -101,13 +114,24 @@ export default function App() {
             trackingType: order.trackingType,
             units: order.units,
           })),
-        })),
-      );
+        }));
+      setOrderAuthRecords((current) => [
+        ...current.filter((record) => record.orderSource !== source),
+        ...sourceRecords,
+      ]);
     }
 
     window.addEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
     return () => window.removeEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ORDER_AUTH_STORAGE_KEY, JSON.stringify(orderAuthRecords));
+    } catch {
+      // Storage can be unavailable in private browsing; the tracker still works in memory.
+    }
+  }, [orderAuthRecords]);
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
 

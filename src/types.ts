@@ -56,6 +56,7 @@ export interface AuthRecord {
   confidence?: 'Confirmed' | 'Pending' | 'Unverified';
   /** Present when this authorization was generated from visit-note orders. */
   orderBased?: boolean;
+  orderSource?: string;
   orderGroupId?: string;
   orderCpts?: Array<{
     orderId: string;
