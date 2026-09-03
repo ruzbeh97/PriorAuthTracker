@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare, NotebookPen } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import { AUTH_STATES } from '../types';
 import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
 import { formatAuthDate, formatAuthDateFromDate, parseAuthDate } from '../utils';
+
+const VisitNoteReadOnlyPanel = lazy(async () => {
+  const { VisitNoteReadOnlyPanel: Panel } = await import('@visit-note/patient-chart');
+  return { default: Panel };
+});
 
 interface AuthDetailPanelProps {
   record: AuthRecord;
@@ -239,6 +244,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
               ? 'Attachments'
               : activeAction === 'appointments'
               ? 'Appointments'
+              : activeAction === 'visit-note'
+              ? 'Visit Note'
               : 'Authorization Details'}
           </h2>
         </div>
@@ -300,6 +307,16 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         <AttachmentsView record={record} />
       ) : activeAction === 'appointments' ? (
         <AppointmentsView record={record} />
+      ) : activeAction === 'visit-note' ? (
+        <Suspense
+          fallback={
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-[13px] text-text-secondary">Loading visit note…</p>
+            </div>
+          }
+        >
+          <VisitNoteReadOnlyPanel />
+        </Suspense>
       ) : (
       <div className="flex-1 overflow-y-auto py-4">
         {/* Patient header */}
@@ -717,6 +734,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         { id: 'assign', icon: User, label: 'Assign' },
         { id: 'attachments', icon: Paperclip, label: 'Attachments' },
         { id: 'appointments', icon: Calendar, label: 'Appointments' },
+        { id: 'visit-note', icon: NotebookPen, label: 'Visit Note' },
       ] as const).map(({ id, icon: Icon, label }) => {
         const isActive = id === 'details' ? !activeAction || activeAction === 'details' : activeAction === id;
         return (

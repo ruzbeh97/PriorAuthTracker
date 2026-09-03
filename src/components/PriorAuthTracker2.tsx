@@ -410,6 +410,11 @@ interface SavedView {
 
 interface PriorAuthTracker2Props {
   orderAuthRecords?: AuthRecord[];
+  onAuthorizationAssigned?: (
+    record: AuthRecord,
+    previousAssignedTo: string,
+    nextAssignedTo: string,
+  ) => void;
   onSelectedRecordChange?: (record: AuthRecord | null, index: number, total: number) => void;
   registerNavigate?: (fn: (dir: 'prev' | 'next') => void) => void;
   registerClearSelection?: (fn: () => void) => void;
@@ -417,6 +422,7 @@ interface PriorAuthTracker2Props {
 
 export default function PriorAuthTracker2({
   orderAuthRecords = [],
+  onAuthorizationAssigned,
   onSelectedRecordChange,
   registerNavigate,
   registerClearSelection,
@@ -579,8 +585,11 @@ export default function PriorAuthTracker2({
   }, []);
 
   const handleAssignRecord = useCallback((recordId: string, names: string[]) => {
-    setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, assignedTo: names.join(', ') } : r)));
-  }, []);
+    const nextAssignedTo = names.join(', ');
+    const record = records.find((entry) => entry.id === recordId);
+    if (record) onAuthorizationAssigned?.(record, record.assignedTo, nextAssignedTo);
+    setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, assignedTo: nextAssignedTo } : r)));
+  }, [onAuthorizationAssigned, records]);
 
   const handleReassignVisit = useCallback((
     fromRecordId: string,
@@ -616,6 +625,10 @@ export default function PriorAuthTracker2({
   const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string) => {
     const now = new Date().toISOString();
     const entry: TimelineEntry = { id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, timestamp: now, author: 'Adam Smith', action: { kind: 'detail_changed', field, from, to } };
+    if (field === 'Assigned To') {
+      const record = records.find((item) => item.id === recordId);
+      if (record) onAuthorizationAssigned?.(record, from, to);
+    }
     setRecords((prev) =>
       prev.map((r) => {
         if (r.id !== recordId) return r;
@@ -633,7 +646,7 @@ export default function PriorAuthTracker2({
         return updated;
       })
     );
-  }, []);
+  }, [onAuthorizationAssigned, records]);
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
@@ -659,8 +672,10 @@ export default function PriorAuthTracker2({
   }, []);
 
   const handleBulkAssignOwner = useCallback((owner: string) => {
+    const selected = records.filter((record) => selectedIds.has(record.id));
+    selected.forEach((record) => onAuthorizationAssigned?.(record, record.assignedTo, owner));
     setRecords((prev) => prev.map((r) => (selectedIds.has(r.id) ? { ...r, assignedTo: owner } : r)));
-  }, [selectedIds]);
+  }, [onAuthorizationAssigned, records, selectedIds]);
 
   const handleBulkChangeState = useCallback((state: AuthState) => {
     setRecords((prev) => prev.map((r) => (selectedIds.has(r.id) ? { ...r, state } : r)));

@@ -21,6 +21,7 @@ import PreferencesPage from './components/PreferencesPage';
 import { mockAuthRecords } from './data';
 import type { AuthRecord, AuthState, TimelineEntry } from './types';
 import { migrateAuthState } from './types';
+import { INITIAL_TASKS, tasksFromAuthAssignment, type TaskRow } from './tasks';
 
 const PatientChartPage = lazy(async () => {
   const { PatientChartPage: Page } = await import('@visit-note/patient-chart');
@@ -60,6 +61,7 @@ type OrderAuthorizationEventDetail = {
     };
     provider: string;
     caseName?: string;
+    assignedTo?: string;
     orders: Array<{
       id: string;
       title: string;
@@ -90,9 +92,22 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('Prior Auth Tracker 2');
   const [orderAuthRecords, setOrderAuthRecords] = useState<AuthRecord[]>(loadStoredOrderAuthRecords);
+  const [tasks, setTasks] = useState<TaskRow[]>(INITIAL_TASKS);
   const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
   const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
   const clearSelectionRef = useRef<(() => void) | null>(null);
+  const orderAuthRecordsRef = useRef(orderAuthRecords);
+  orderAuthRecordsRef.current = orderAuthRecords;
+
+  const addAuthAssignmentTasks = useCallback((
+    record: Pick<AuthRecord, 'id' | 'patient' | 'authNumber'>,
+    previousAssignedTo: string,
+    nextAssignedTo: string,
+  ) => {
+    const created = tasksFromAuthAssignment(record, previousAssignedTo, nextAssignedTo);
+    if (created.length === 0) return;
+    setTasks((current) => [...created, ...current]);
+  }, []);
 
   useEffect(() => {
     function syncOrderAuthorizations(event: Event) {
@@ -116,7 +131,7 @@ export default function App() {
           facility: 'MAIN OFFICE',
           provider: group.provider,
           caseName: group.caseName,
-          assignedTo: 'Unassigned',
+          assignedTo: group.assignedTo?.trim() || 'Unassigned',
           tags: ['ORDER AUTHORIZATION'],
           notes: [],
           orderBased: true,
@@ -131,6 +146,11 @@ export default function App() {
             details: order.details,
           })),
         }));
+      const previousRecords = orderAuthRecordsRef.current;
+      for (const record of sourceRecords) {
+        const previous = previousRecords.find((entry) => entry.id === record.id);
+        addAuthAssignmentTasks(record, previous?.assignedTo ?? 'Unassigned', record.assignedTo);
+      }
       setOrderAuthRecords((current) => [
         ...current.filter((record) => record.orderSource !== source),
         ...sourceRecords,
@@ -139,7 +159,7 @@ export default function App() {
 
     window.addEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
     return () => window.removeEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
-  }, []);
+  }, [addAuthAssignmentTasks]);
 
   useEffect(() => {
     function openCreateAuth(event: Event) {
@@ -444,12 +464,13 @@ export default function App() {
               </main>
             </Suspense>
           ) : activePage === 'Tasks' ? (
-            <TasksPage />
+            <TasksPage tasks={tasks} onTasksChange={setTasks} />
           ) : activePage === 'Preferences' ? (
             <PreferencesPage />
           ) : activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
               orderAuthRecords={orderAuthRecords}
+              onAuthorizationAssigned={addAuthAssignmentTasks}
               onSelectedRecordChange={handleSelectedRecordChange}
               registerNavigate={handleRegisterNavigate}
               registerClearSelection={handleRegisterClearSelection}

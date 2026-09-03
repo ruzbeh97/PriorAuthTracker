@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import CreateTaskDrawer, { formatTaskDueDate } from './CreateTaskDrawer';
 import type { CreateTaskForm } from './CreateTaskDrawer';
+import { CURRENT_USER, type TaskPriority, type TaskRow, type TaskStatus } from '../tasks';
 import {
   CalendarDays,
   ChevronDown,
@@ -19,150 +20,6 @@ import {
 } from 'lucide-react';
 
 type TaskTab = 'mine' | 'group' | 'assigned-by-me' | 'all';
-type Priority = 'Urgent' | 'High' | 'Medium' | 'Low' | 'No Priority';
-type Status = 'Not Started' | 'Done';
-type AssigneeKind = 'person' | 'group';
-
-interface TaskRow {
-  id: string;
-  name: string;
-  assignedTo: string;
-  assigneeKind: AssigneeKind;
-  assignedBy: string;
-  patient: string;
-  priority: Priority;
-  status: Status;
-  dueDate: string;
-  type: string;
-  fax: string;
-  attachment: string;
-  uploadedFile: boolean;
-}
-
-const CURRENT_USER = 'Adam Smith';
-
-const INITIAL_TASKS: TaskRow[] = [
-  {
-    id: 'task-1',
-    name: 'Testing',
-    assignedTo: "Dr. Samimi's Staff",
-    assigneeKind: 'group',
-    assignedBy: CURRENT_USER,
-    patient: '',
-    priority: 'Urgent',
-    status: 'Not Started',
-    dueDate: '11/12/2024',
-    type: 'Need Prior Authorization',
-    fax: '',
-    attachment: '',
-    uploadedFile: true,
-  },
-  {
-    id: 'task-2',
-    name: 'Test Task',
-    assignedTo: 'Hareet Dahya',
-    assigneeKind: 'person',
-    assignedBy: 'Jaime Mandela',
-    patient: '',
-    priority: 'High',
-    status: 'Done',
-    dueDate: '11/12/2024',
-    type: 'Admin',
-    fax: '',
-    attachment: '',
-    uploadedFile: false,
-  },
-  {
-    id: 'task-3',
-    name: 'get pre auth for patient',
-    assignedTo: 'Ansh Mehta',
-    assigneeKind: 'person',
-    assignedBy: CURRENT_USER,
-    patient: '',
-    priority: 'Medium',
-    status: 'Not Started',
-    dueDate: '11/18/2024',
-    type: 'Prior Auth',
-    fax: '',
-    attachment: '',
-    uploadedFile: false,
-  },
-  {
-    id: 'task-4',
-    name: 'Referrals',
-    assignedTo: "Dr. Samimi's Staff",
-    assigneeKind: 'group',
-    assignedBy: 'Hareet Dahya',
-    patient: '',
-    priority: 'Low',
-    status: 'Not Started',
-    dueDate: '12/01/2024',
-    type: 'Faxing',
-    fax: '',
-    attachment: '',
-    uploadedFile: false,
-  },
-  {
-    id: 'task-5',
-    name: 'Follow up on pending authorization',
-    assignedTo: CURRENT_USER,
-    assigneeKind: 'person',
-    assignedBy: 'Jaime Mandela',
-    patient: 'Jordan Reyes',
-    priority: 'High',
-    status: 'Not Started',
-    dueDate: '09/08/2026',
-    type: 'Need Prior Authorization',
-    fax: '',
-    attachment: 'auth-packet.pdf',
-    uploadedFile: true,
-  },
-  {
-    id: 'task-6',
-    name: 'Resend failed fax',
-    assignedTo: 'Admins',
-    assigneeKind: 'group',
-    assignedBy: CURRENT_USER,
-    patient: '',
-    priority: 'Urgent',
-    status: 'Not Started',
-    dueDate: '09/03/2026',
-    type: 'Faxing',
-    fax: 'failed',
-    attachment: '',
-    uploadedFile: false,
-  },
-  {
-    id: 'task-7',
-    name: 'Review referral packet',
-    assignedTo: CURRENT_USER,
-    assigneeKind: 'person',
-    assignedBy: 'Ansh Mehta',
-    patient: 'Diana Morales',
-    priority: 'Medium',
-    status: 'Done',
-    dueDate: '08/22/2026',
-    type: 'Admin',
-    fax: '',
-    attachment: '',
-    uploadedFile: true,
-  },
-  {
-    id: 'task-8',
-    name: 'Schedule authorized visit',
-    assignedTo: 'Hareet Dahya',
-    assigneeKind: 'person',
-    assignedBy: CURRENT_USER,
-    patient: '',
-    priority: 'No Priority',
-    status: 'Done',
-    dueDate: '08/15/2026',
-    type: 'Prior Auth',
-    fax: '',
-    attachment: '',
-    uploadedFile: false,
-  },
-];
 
 const TABS: Array<{ id: TaskTab; label: string }> = [
   { id: 'mine', label: 'My Tasks' },
@@ -171,10 +28,15 @@ const TABS: Array<{ id: TaskTab; label: string }> = [
   { id: 'all', label: 'All Tasks' },
 ];
 
-export default function TasksPage() {
+export default function TasksPage({
+  tasks,
+  onTasksChange,
+}: {
+  tasks: TaskRow[];
+  onTasksChange: (updater: (current: TaskRow[]) => TaskRow[]) => void;
+}) {
   const [tab, setTab] = useState<TaskTab>('all');
   const [query, setQuery] = useState('');
-  const [tasks, setTasks] = useState<TaskRow[]>(INITIAL_TASKS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
@@ -219,7 +81,7 @@ export default function TasksPage() {
 
   const handleCreateTask = (form: CreateTaskForm) => {
     const id = `task-${Date.now()}`;
-    setTasks((current) => [
+    onTasksChange((current) => [
       {
         id,
         name: form.title.trim(),
@@ -241,7 +103,7 @@ export default function TasksPage() {
   };
 
   const deleteTask = (id: string) => {
-    setTasks((current) => current.filter((task) => task.id !== id));
+    onTasksChange((current) => current.filter((task) => task.id !== id));
     setSelectedIds((current) => {
       const next = new Set(current);
       next.delete(id);
@@ -473,8 +335,8 @@ function IconButton({
   );
 }
 
-function PriorityBadge({ value }: { value: Priority }) {
-  const styles: Record<Priority, string> = {
+function PriorityBadge({ value }: { value: TaskPriority }) {
+  const styles: Record<TaskPriority, string> = {
     Urgent: 'bg-[#fde8e8] text-[#c62828]',
     High: 'bg-[#ffe8d6] text-[#c2410c]',
     Medium: 'bg-[#fff4d6] text-[#b45309]',
@@ -488,7 +350,7 @@ function PriorityBadge({ value }: { value: Priority }) {
   );
 }
 
-function StatusBadge({ value }: { value: Status }) {
+function StatusBadge({ value }: { value: TaskStatus }) {
   if (value === 'Done') {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-[#e6f4ea] px-2.5 py-0.5 text-[12px] font-medium leading-[18px] text-[#1a1a1a]">
