@@ -1,24 +1,33 @@
-import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, PanelLeftClose } from 'lucide-react';
 import { mockAuthRecords } from '../data';
-import { groupByPatient } from '../utils';
+import { groupRecords, formatAuthDate, parseAuthDateSortValue } from '../utils';
+import type { GroupingKey, GroupOrderField, PatientGroup } from '../utils';
 import FilterDropdown from './FilterDropdown';
+import DisplayMenu, { DEFAULT_VISIBLE_COLUMNS } from './DisplayMenu';
+import type { DisplayColumn, OrderField } from './DisplayMenu';
 import { applyFilters, EMPTY_FILTERS, isFiltersEmpty } from './FilterPanel';
 import type { Filters } from './FilterPanel';
 import BulkActions from './BulkActions';
 import AuthDetailPanel from './AuthDetailPanel';
-import CreateAuthDrawer from './CreateAuthDrawer';
-import type { CreateAuthForm } from './CreateAuthDrawer';
+import { OPEN_CREATE_AUTH_EVENT } from './CreateAuthDrawer';
 import type { AuthRecord, AuthState, TimelineEntry } from '../types';
-import type { PatientGroup } from '../utils';
+import { migrateAuthState } from '../types';
 import UtilizationBar from './UtilizationBar';
 
 function StateChip({ state }: { state: string }) {
-  if (state === 'Authorized') {
+  if (state === 'Authorized' || state === 'Scheduled') {
     return (
       <span className="inline-flex items-center px-2 h-7 rounded-lg bg-[#e6f2d9] text-[12px] font-medium leading-[18px] text-[#4f7326]">
-        Authorized
+        {state}
+      </span>
+    );
+  }
+  if (state === 'Needs Authorization') {
+    return (
+      <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
+        Needs Authorization
       </span>
     );
   }
@@ -53,6 +62,31 @@ function StatusDot({ status }: { status: string }) {
       <span className="text-sm font-medium text-text-primary whitespace-nowrap">{status}</span>
     </div>
   );
+}
+
+function authTypeLabel(record: AuthRecord) {
+  return record.tags.includes('REFERRAL') ? 'Referral' : 'Pre-Certification';
+}
+
+function sortValue(record: AuthRecord, field: OrderField) {
+  switch (field) {
+    case 'startDate':
+      return parseAuthDateSortValue(record.startDate);
+    case 'endDate':
+      return parseAuthDateSortValue(record.endDate);
+    case 'patient':
+      return record.patient.name.toLowerCase();
+    case 'authNumber':
+      return record.authNumber.toLowerCase();
+    case 'payer':
+      return record.payer.name.toLowerCase();
+    case 'state':
+      return record.state.toLowerCase();
+    case 'status':
+      return record.status.toLowerCase();
+    case 'type':
+      return authTypeLabel(record).toLowerCase();
+  }
 }
 
 function formatNoteTimestamp(iso: string): string {
@@ -195,6 +229,8 @@ function AssigneeDropdown({
       ref={ref}
       style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
       className="bg-white border border-black/10 rounded-lg shadow-[0px_4px_12px_rgba(0,0,0,0.08)] w-[240px] overflow-hidden"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="flex items-start pb-1.5 pl-[18px] pr-2.5 pt-2.5 border-b border-black/10">
         <input
@@ -262,7 +298,15 @@ function AssigneeCell({
 
   return (
     <div className="relative flex justify-center">
-      <button ref={btnRef} onClick={onToggle} className="cursor-pointer">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+        className="cursor-pointer"
+      >
         <AvatarGroup assignedTo={isOpen ? displayName : record.assignedTo} />
       </button>
       {isOpen && (
@@ -338,19 +382,25 @@ function SurfacedFilterPill({
 }
 
 const TABLE_COLUMNS_FULL = [
-  { key: 'patient', label: 'Patient', width: 'w-[145px]' },
-  { key: 'authNumber', label: 'Auth #', width: 'w-[160px]' },
+  { key: 'patient', label: 'Patient', width: 'w-[145px]', always: true },
+  { key: 'authNumber', label: 'Auth #', width: 'w-[160px]', always: true },
   { key: 'payer', label: 'Payer', width: 'w-[105px]' },
   { key: 'start', label: 'Start', width: 'w-[93px]' },
   { key: 'end', label: 'End', width: 'w-[93px]' },
   { key: 'utilization', label: 'Utilization/Orders', width: 'w-[210px]' },
   { key: 'state', label: 'State', width: 'w-[107px]' },
   { key: 'status', label: 'Status', width: 'w-[92px]' },
+  { key: 'type', label: 'Type', width: 'w-[140px]' },
   { key: 'facility', label: 'Facility', width: 'w-[160px]' },
   { key: 'provider', label: 'Provider', width: 'w-[132px]' },
   { key: 'tags', label: 'Tags', width: 'w-[167px]' },
-  { key: 'notes', label: 'Notes', width: 'flex-1 min-w-[120px]' },
-];
+  { key: 'notes', label: 'Notes', width: 'flex-1 min-w-[120px]', always: true },
+] as const;
+
+function groupLabel(groupKey: string, grouping: GroupingKey) {
+  // Patient keys carry the DOB so same-name patients stay separate.
+  return grouping === 'patient' ? groupKey.split('|')[0] : groupKey;
+}
 
 interface SavedView {
   id: string;
@@ -373,7 +423,7 @@ export default function PriorAuthTracker2({
 }: PriorAuthTracker2Props) {
   const [records, setRecords] = useState<AuthRecord[]>(mockAuthRecords);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set(['Diana Morales|06/14/1998']));
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'pre-certs' | 'referrals'>('pre-certs');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -389,13 +439,20 @@ export default function PriorAuthTracker2({
   const [assigneeDropdownId, setAssigneeDropdownId] = useState<string | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [tableCollapsed, setTableCollapsed] = useState(false);
-  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [orderBy, setOrderBy] = useState<OrderField>('startDate');
+  const [orderDir, setOrderDir] = useState<'asc' | 'desc'>('desc');
+  const [grouping, setGrouping] = useState<GroupingKey>('none');
+  const [groupOrder, setGroupOrder] = useState<GroupOrderField>('default');
+  const [groupDir, setGroupDir] = useState<'asc' | 'desc'>('asc');
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<Set<DisplayColumn>>(() => new Set(DEFAULT_VISIBLE_COLUMNS));
 
   useEffect(() => {
     // Only rows synced from a note carry orderSource; seeded CPT rows must survive.
     setRecords((current) => [
-      ...orderAuthRecords,
-      ...current.filter((record) => !record.orderSource),
+      ...orderAuthRecords.map((record) => ({ ...record, state: migrateAuthState(record.state) })),
+      ...current.filter((record) => !record.orderSource).map((record) => ({ ...record, state: migrateAuthState(record.state) })),
     ]);
     setSelectedRecordId((current) =>
       current?.startsWith('order-auth-') &&
@@ -405,29 +462,6 @@ export default function PriorAuthTracker2({
     );
   }, [orderAuthRecords]);
 
-  const handleCreateAuth = useCallback((form: CreateAuthForm) => {
-    const newRecord: AuthRecord = {
-      id: `new-${Date.now()}`,
-      patient: { name: form.patient || 'New Patient', dob: '' },
-      authNumber: form.authorizationNumber,
-      payer: { name: form.payer, planId: form.payerId },
-      startDate: form.startDate ? new Date(form.startDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
-      endDate: form.endDate ? new Date(form.endDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
-      visitsAuthorized: parseInt(form.visitsAuthorized) || 0,
-      visitsCompleted: 0,
-      visitsScheduled: 0,
-      state: 'Not Started',
-      status: form.authorizationNumber ? 'Active' : 'Needs Auth',
-      facility: form.facility,
-      provider: form.provider,
-      assignedTo: form.assignedTo,
-      tags: form.tags ? [form.tags] : [],
-      notes: form.notes
-        ? [{ id: `n${Date.now()}`, text: form.notes, author: 'Adam Smith', timestamp: new Date().toISOString() }]
-        : [],
-    };
-    setRecords((prev) => [newRecord, ...prev]);
-  }, []);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -440,7 +474,10 @@ export default function PriorAuthTracker2({
     return () => document.removeEventListener('mousedown', handle);
   }, [contextMenuViewId]);
 
-  const baseFilteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
+  const baseFilteredRecords = useMemo(() => {
+    const filtered = applyFilters(records, filters);
+    return includeArchived ? filtered : filtered.filter((record) => record.state !== 'Archived');
+  }, [records, filters, includeArchived]);
 
   const needsAuth = baseFilteredRecords.filter((r) => r.status === 'Needs Auth').length;
   const expiringSoon = baseFilteredRecords.filter((r) => r.status === 'Expiring Soon').length;
@@ -452,7 +489,24 @@ export default function PriorAuthTracker2({
     return baseFilteredRecords.filter((r) => r.status === statusMap[activeScorecard]);
   }, [baseFilteredRecords, activeScorecard]);
 
-  const groups = useMemo(() => groupByPatient(filteredRecords), [filteredRecords]);
+  const displayedRecords = useMemo(() => {
+    const next = [...filteredRecords];
+    next.sort((a, b) => {
+      const left = sortValue(a, orderBy);
+      const right = sortValue(b, orderBy);
+      const compared =
+        typeof left === 'number' && typeof right === 'number'
+          ? left - right
+          : String(left).localeCompare(String(right));
+      return orderDir === 'asc' ? compared : -compared;
+    });
+    return next;
+  }, [filteredRecords, orderBy, orderDir]);
+
+  const groups = useMemo(
+    () => groupRecords(displayedRecords, grouping, groupOrder, groupDir),
+    [displayedRecords, grouping, groupOrder, groupDir],
+  );
   const flatRecordIds = useMemo(() => {
     const ids: string[] = [];
     groups.forEach((g) => {
@@ -471,16 +525,16 @@ export default function PriorAuthTracker2({
 
   useEffect(() => {
     if (!selectedRecord) return;
-    const patientKey = `${selectedRecord.patient.name}|${selectedRecord.patient.dob}`;
-    const group = groups.find((g) => g.patientKey === patientKey);
-    if (group && group.children.some((c) => c.id === selectedRecord.id)) {
-      setExpandedPatients((prev) => {
-        if (prev.has(patientKey)) return prev;
-        const next = new Set(prev);
-        next.add(patientKey);
-        return next;
-      });
-    }
+    const group = groups.find(
+      (g) => g.primary.id === selectedRecord.id || g.children.some((c) => c.id === selectedRecord.id),
+    );
+    if (!group) return;
+    setCollapsedGroups((prev) => {
+      if (!prev.has(group.patientKey)) return prev;
+      const next = new Set(prev);
+      next.delete(group.patientKey);
+      return next;
+    });
   }, [selectedRecord, groups]);
 
   const navigateRecord = useCallback((direction: 'prev' | 'next') => {
@@ -515,11 +569,11 @@ export default function PriorAuthTracker2({
     });
   }, [filteredRecords]);
 
-  const handleToggleExpand = useCallback((patientKey: string) => {
-    setExpandedPatients((prev) => {
+  const handleToggleExpand = useCallback((groupKey: string) => {
+    setCollapsedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(patientKey)) next.delete(patientKey);
-      else next.add(patientKey);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
       return next;
     });
   }, []);
@@ -574,6 +628,7 @@ export default function PriorAuthTracker2({
           case 'Start Date': updated.startDate = to; break;
           case 'End Date': updated.endDate = to; break;
           case 'Payer': updated.payer = { ...r.payer, name: to }; break;
+          case 'State': updated.state = migrateAuthState(to); break;
         }
         return updated;
       })
@@ -639,7 +694,13 @@ export default function PriorAuthTracker2({
   const allTags = useMemo(() => [...new Set(records.flatMap((r) => r.tags))].sort(), [records]);
 
   const isDetailOpen = !!selectedRecord;
-  const TABLE_COLUMNS = TABLE_COLUMNS_FULL;
+  const TABLE_COLUMNS = TABLE_COLUMNS_FULL.filter((col) =>
+    'always' in col && col.always ? true : visibleColumns.has(col.key as DisplayColumn),
+  );
+
+  const isGrouped = grouping !== 'none';
+  // Expand + checkbox columns, the visible data columns, and the sticky assignee column.
+  const tableColumnCount = 2 + TABLE_COLUMNS.length + (visibleColumns.has('assignee') ? 1 : 0);
 
   const allSelected = filteredRecords.length > 0 && selectedIds.size === filteredRecords.length;
   const someSelected = selectedIds.size > 0 && !allSelected;
@@ -821,7 +882,10 @@ export default function PriorAuthTracker2({
             </button>
           </div>
           <button
-            onClick={() => { setSelectedRecordId(null); setCreateDrawerOpen(true); }}
+            onClick={() => {
+              setSelectedRecordId(null);
+              window.dispatchEvent(new CustomEvent(OPEN_CREATE_AUTH_EVENT));
+            }}
             className="flex items-center gap-1.5 h-7 px-3.5 py-[3px] bg-primary rounded-full text-sm font-medium text-white"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -926,10 +990,38 @@ export default function PriorAuthTracker2({
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-1.5 h-7 px-3.5 py-[3px] border border-outline rounded-full bg-white text-sm font-medium text-text-primary">
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Display</span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setDisplayOpen((current) => !current)}
+              className={`flex items-center gap-1.5 h-7 px-3.5 py-[3px] border rounded-full text-sm font-medium ${
+                displayOpen
+                  ? 'border-primary bg-[#e7eafd] text-primary'
+                  : 'border-outline bg-white text-text-primary'
+              }`}
+              data-display-trigger="true"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Display</span>
+            </button>
+            <DisplayMenu
+              open={displayOpen}
+              onClose={() => setDisplayOpen(false)}
+              orderBy={orderBy}
+              onOrderByChange={setOrderBy}
+              orderDir={orderDir}
+              onOrderDirChange={setOrderDir}
+              grouping={grouping}
+              onGroupingChange={setGrouping}
+              groupOrder={groupOrder}
+              onGroupOrderChange={setGroupOrder}
+              groupDir={groupDir}
+              onGroupDirChange={setGroupDir}
+              includeArchived={includeArchived}
+              onIncludeArchivedChange={setIncludeArchived}
+              visibleColumns={visibleColumns}
+              onVisibleColumnsChange={setVisibleColumns}
+            />
+          </div>
           {!isFiltersEmpty(filters) && (
             <>
               <div className="w-px h-7 bg-outline" />
@@ -980,30 +1072,43 @@ export default function PriorAuthTracker2({
                     {col.label}
                   </th>
                 ))}
-                {/* box-shadow is not painted on cells in a border-collapse table,
-                    so the sticky edge shadow is drawn as a gradient overlay. */}
-                <th className="relative bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-center text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 z-20">
-                  <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
-                  Assignee
-                </th>
+                {visibleColumns.has('assignee') && (
+                  <th className="relative bg-surface-variant border-b border-l border-outline w-[100px] h-9 px-4 py-2 text-center text-sm font-medium text-text-primary whitespace-nowrap sticky right-0 z-20">
+                    <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
+                    Assignee
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {groups.map((group: PatientGroup) => {
-                const patientKey = group.patientKey;
+                const groupKey = group.patientKey;
                 const allRecords = [group.primary, ...group.children];
-                const isExpanded = expandedPatients.has(patientKey);
-                const hasMultiple = allRecords.length > 1;
+                const isCollapsed = isGrouped && collapsedGroups.has(groupKey);
 
-                return allRecords.map((record, idx) => {
-                  const isPrimary = idx === 0;
-                  const isChild = !isPrimary;
-                  const showRow = isPrimary || (hasMultiple && isExpanded);
-                  if (!showRow) return null;
-
-                  const isChildRow = isChild && hasMultiple && isExpanded;
-                  const rowBg = isChildRow ? 'bg-surface-variant' : 'bg-white';
-
+                return (
+                <Fragment key={groupKey}>
+                {isGrouped && (
+                  <tr
+                    onClick={() => handleToggleExpand(groupKey)}
+                    className="bg-surface-variant border-b border-outline h-8 cursor-pointer hover:bg-outline/40 transition-colors"
+                  >
+                    <td colSpan={tableColumnCount} className="px-2 py-1">
+                      <div className="flex items-center gap-2">
+                        {isCollapsed ? (
+                          <ChevronDown className="w-5 h-5 shrink-0 text-text-primary" />
+                        ) : (
+                          <ChevronUp className="w-5 h-5 shrink-0 text-text-primary" />
+                        )}
+                        <span className="text-sm text-text-primary">{groupLabel(groupKey, grouping)}</span>
+                        <span className="inline-flex h-5 items-center rounded bg-outline px-1.5 text-xs font-medium text-text-primary">
+                          {allRecords.length}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {!isCollapsed && allRecords.map((record) => {
                   const isSelected = selectedRecordId === record.id;
 
                   return (
@@ -1011,23 +1116,9 @@ export default function PriorAuthTracker2({
                       key={record.id}
                       ref={isSelected ? (el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) : undefined}
                       onClick={() => setSelectedRecordId((prev) => prev === record.id ? null : record.id)}
-                      className={`${rowBg} border-b border-outline h-12 hover:bg-[#f0f4ff] transition-colors cursor-pointer ${isSelected ? 'bg-[#f0f4ff]!' : ''}`}
+                      className={`bg-white border-b border-outline h-12 hover:bg-[#f0f4ff] transition-colors cursor-pointer ${isSelected ? 'bg-[#f0f4ff]!' : ''}`}
                     >
-                      {/* Expand */}
-                      <td className="px-2 py-4 w-11" onClick={(e) => e.stopPropagation()}>
-                        {isPrimary && hasMultiple ? (
-                          <button
-                            onClick={() => handleToggleExpand(patientKey)}
-                            className="p-1 rounded-full hover:bg-outline/40"
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="w-5 h-5 text-text-primary" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-text-primary" />
-                            )}
-                          </button>
-                        ) : null}
-                      </td>
+                      <td className="px-2 py-4 w-11" />
 
                       {/* Checkbox */}
                       <td className="pl-2 pr-1 py-4" onClick={(e) => e.stopPropagation()}>
@@ -1059,25 +1150,32 @@ export default function PriorAuthTracker2({
                       </td>
 
                       {/* Payer */}
+                      {visibleColumns.has('payer') && (
                       <td className="px-4 py-4 w-[105px]">
                         <span className="text-sm text-[#1566b7] truncate block">{record.payer.name}</span>
                       </td>
+                      )}
 
                       {/* Start */}
+                      {visibleColumns.has('start') && (
                       <td className="px-4 py-4 w-[93px]">
                         <span className="text-sm text-text-primary truncate block">
-                          {record.startDate || '--/--'}
+                          {formatAuthDate(record.startDate)}
                         </span>
                       </td>
+                      )}
 
                       {/* End */}
+                      {visibleColumns.has('end') && (
                       <td className="px-4 py-4 w-[93px]">
                         <span className="text-sm text-text-primary truncate block">
-                          {record.endDate || '--/--'}
+                          {formatAuthDate(record.endDate)}
                         </span>
                       </td>
+                      )}
 
                       {/* Utilization */}
+                      {visibleColumns.has('utilization') && (
                       <td className="px-4 py-4 w-[210px]">
                         {record.orderBased ? (
                           <OrderCptChips record={record} />
@@ -1089,19 +1187,34 @@ export default function PriorAuthTracker2({
                           />
                         )}
                       </td>
+                      )}
 
+                      {visibleColumns.has('state') && (
                       <td className="px-4 py-2 w-[107px]">
                         <StateChip state={record.state} />
                       </td>
+                      )}
+                      {visibleColumns.has('status') && (
                       <td className="px-4 py-4 w-[92px]">
                         <StatusDot status={record.status} />
                       </td>
+                      )}
+                      {visibleColumns.has('type') && (
+                      <td className="px-4 py-4 w-[140px]">
+                        <span className="text-sm text-text-primary truncate block">{authTypeLabel(record)}</span>
+                      </td>
+                      )}
+                      {visibleColumns.has('facility') && (
                       <td className="px-4 py-4 w-[160px]">
                         <span className="text-sm text-text-primary truncate block">{record.facility}</span>
                       </td>
+                      )}
+                      {visibleColumns.has('provider') && (
                       <td className="px-4 py-4 w-[132px]">
                         <span className="text-sm text-text-primary truncate block w-[100px]">{record.provider}</span>
                       </td>
+                      )}
+                      {visibleColumns.has('tags') && (
                       <td className="px-4 py-4 w-[167px]">
                         <div className="flex items-center gap-1 flex-wrap">
                           {record.tags.length > 0 ? (
@@ -1111,6 +1224,7 @@ export default function PriorAuthTracker2({
                           ) : null}
                         </div>
                       </td>
+                      )}
                       <td className="px-4 py-4 flex-1 min-w-[120px]">
                         <span className="text-sm text-text-primary truncate block">
                           {record.notes.length > 0
@@ -1119,7 +1233,11 @@ export default function PriorAuthTracker2({
                         </span>
                       </td>
 
-                      <td className={`relative px-4 py-2 w-[100px] text-center sticky right-0 z-10 ${rowBg} border-l border-outline`}>
+                      {visibleColumns.has('assignee') && (
+                      <td
+                        className="relative px-4 py-2 w-[100px] text-center sticky right-0 z-10 bg-white border-l border-outline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <span className="pointer-events-none absolute top-0 bottom-0 right-full w-2.5 bg-linear-to-l from-black/12 to-transparent" />
                         <AssigneeCell
                           record={record}
@@ -1129,9 +1247,12 @@ export default function PriorAuthTracker2({
                           onClose={() => setAssigneeDropdownId(null)}
                         />
                       </td>
+                      )}
                     </tr>
                   );
-                });
+                })}
+                </Fragment>
+                );
               })}
             </tbody>
           </table>
@@ -1152,7 +1273,7 @@ export default function PriorAuthTracker2({
       />
       </div>
 
-      {selectedRecord && !createDrawerOpen && (
+      {selectedRecord && (
         <AuthDetailPanel
           record={selectedRecord}
           allRecords={records}
@@ -1166,13 +1287,6 @@ export default function PriorAuthTracker2({
         />
       )}
 
-      {createDrawerOpen && (
-        <CreateAuthDrawer
-          open={createDrawerOpen}
-          onClose={() => setCreateDrawerOpen(false)}
-          onCreate={handleCreateAuth}
-        />
-      )}
     </main>
   );
 }

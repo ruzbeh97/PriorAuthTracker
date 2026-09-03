@@ -34,8 +34,18 @@ export default function Header({
 }: HeaderProps) {
   const patientsPage = activePage === 'Patients';
   const orderManagerPage = activePage === 'Order Manager';
+  const tasksPage = activePage === 'Tasks';
+  const preferencesPage = activePage === 'Preferences';
   const sectionLabel = patientsPage || orderManagerPage ? 'Medical Records' : 'Daily Operations';
-  const pageLabel = patientsPage ? 'Patients' : orderManagerPage ? 'Order Manager' : 'Prior Authorizations';
+  const pageLabel = patientsPage
+    ? 'Patients'
+    : orderManagerPage
+      ? 'Order Manager'
+      : tasksPage
+        ? 'Tasks'
+        : preferencesPage
+          ? 'Preferences'
+          : 'Prior Authorizations';
 
   return (
     <header className="flex items-center gap-2 h-9 px-2 bg-shell shrink-0">

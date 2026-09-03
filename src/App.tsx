@@ -9,12 +9,18 @@ import AuthTable from './components/AuthTable';
 import BulkActions from './components/BulkActions';
 import Pagination from './components/Pagination';
 import NotesModal from './components/NotesModal';
-import CreateAuthDrawer from './components/CreateAuthDrawer';
-import type { CreateAuthForm } from './components/CreateAuthDrawer';
+import CreateAuthDrawer, {
+  OPEN_CREATE_AUTH_EVENT,
+  authRecordFromForm,
+} from './components/CreateAuthDrawer';
+import type { CreateAuthForm, OpenCreateAuthDetail } from './components/CreateAuthDrawer';
 import AuthDetailPanel from './components/AuthDetailPanel';
 import PriorAuthTracker2 from './components/PriorAuthTracker2';
+import TasksPage from './components/TasksPage';
+import PreferencesPage from './components/PreferencesPage';
 import { mockAuthRecords } from './data';
 import type { AuthRecord, AuthState, TimelineEntry } from './types';
+import { migrateAuthState } from './types';
 
 const PatientChartPage = lazy(async () => {
   const { PatientChartPage: Page } = await import('@visit-note/patient-chart');
@@ -34,7 +40,9 @@ function loadStoredOrderAuthRecords(): AuthRecord[] {
   try {
     const raw = window.localStorage.getItem(ORDER_AUTH_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) ? (parsed as AuthRecord[]) : [];
+    return Array.isArray(parsed)
+      ? (parsed as AuthRecord[]).map((record) => ({ ...record, state: migrateAuthState(record.state) }))
+      : [];
   } catch {
     return [];
   }
@@ -51,12 +59,17 @@ type OrderAuthorizationEventDetail = {
       insurance: string;
     };
     provider: string;
+    caseName?: string;
     orders: Array<{
       id: string;
       title: string;
       code: string;
       trackingType: 'Units';
       units: string;
+      details?: Array<{
+        label: string;
+        value: string;
+      }>;
     }>;
   }>;
 };
@@ -70,6 +83,7 @@ export default function App() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [notesRecordId, setNotesRecordId] = useState<string | null>(null);
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [createAuthDefaults, setCreateAuthDefaults] = useState<OpenCreateAuthDetail | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
@@ -97,10 +111,11 @@ export default function App() {
           visitsAuthorized: 0,
           visitsCompleted: 0,
           visitsScheduled: 0,
-          state: 'Not Started',
+          state: 'Needs Authorization',
           status: 'Needs Auth',
           facility: 'MAIN OFFICE',
           provider: group.provider,
+          caseName: group.caseName,
           assignedTo: 'Unassigned',
           tags: ['ORDER AUTHORIZATION'],
           notes: [],
@@ -113,6 +128,7 @@ export default function App() {
             code: order.code,
             trackingType: order.trackingType,
             units: order.units,
+            details: order.details,
           })),
         }));
       setOrderAuthRecords((current) => [
@@ -123,6 +139,16 @@ export default function App() {
 
     window.addEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
     return () => window.removeEventListener(ORDER_AUTHORIZATIONS_EVENT, syncOrderAuthorizations);
+  }, []);
+
+  useEffect(() => {
+    function openCreateAuth(event: Event) {
+      const detail = (event as CustomEvent<OpenCreateAuthDetail | undefined>).detail;
+      setCreateAuthDefaults(detail ?? undefined);
+      setCreateDrawerOpen(true);
+    }
+    window.addEventListener(OPEN_CREATE_AUTH_EVENT, openCreateAuth);
+    return () => window.removeEventListener(OPEN_CREATE_AUTH_EVENT, openCreateAuth);
   }, []);
 
   useEffect(() => {
@@ -272,29 +298,11 @@ export default function App() {
 
   const handleCreateAuth = useCallback((form: CreateAuthForm) => {
     const newRecord: AuthRecord = {
-      id: `new-${Date.now()}`,
-      patient: {
-        name: form.patient || 'New Patient',
-        dob: '',
-      },
-      authNumber: form.authorizationNumber,
-      payer: { name: form.payer, planId: form.payerId },
-      startDate: form.startDate ? new Date(form.startDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
-      endDate: form.endDate ? new Date(form.endDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : '',
-      visitsAuthorized: parseInt(form.visitsAuthorized) || 0,
-      visitsCompleted: 0,
-      visitsScheduled: 0,
-      state: 'Not Started',
-      status: form.authorizationNumber ? 'Active' : 'Needs Auth',
-      facility: form.facility,
-      provider: form.provider,
-      assignedTo: form.assignedTo,
-      tags: form.tags ? [form.tags] : [],
-      notes: form.notes
-        ? [{ id: `n${Date.now()}`, text: form.notes, author: 'Adam Smith', timestamp: new Date().toISOString() }]
-        : [],
+      ...authRecordFromForm(form),
+      orderSource: 'create-drawer',
     };
     setRecords((prev) => [newRecord, ...prev]);
+    setOrderAuthRecords((prev) => [newRecord, ...prev.filter((record) => record.id !== newRecord.id)]);
   }, []);
 
   const handleReassignVisit = useCallback((
@@ -386,6 +394,7 @@ export default function App() {
           case 'Start Date': updated.startDate = to; break;
           case 'End Date': updated.endDate = to; break;
           case 'Payer': updated.payer = { ...r.payer, name: to }; break;
+          case 'State': updated.state = migrateAuthState(to); break;
         }
         return updated;
       })
@@ -434,6 +443,10 @@ export default function App() {
                 <OrdersPage siteWide />
               </main>
             </Suspense>
+          ) : activePage === 'Tasks' ? (
+            <TasksPage />
+          ) : activePage === 'Preferences' ? (
+            <PreferencesPage />
           ) : activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
               orderAuthRecords={orderAuthRecords}
@@ -452,7 +465,10 @@ export default function App() {
             <Toolbar
               activeTab={activeTab}
               onTabChange={setActiveTab}
-              onCreateAuth={() => setCreateDrawerOpen(true)}
+              onCreateAuth={() => {
+                setCreateAuthDefaults(undefined);
+                setCreateDrawerOpen(true);
+              }}
               filterOpen={filterOpen}
               onToggleFilter={() => setFilterOpen((o) => !o)}
               activeFilterCount={activeFilterCount}
@@ -497,13 +513,6 @@ export default function App() {
             />
           </main>
 
-          {createDrawerOpen && (
-            <CreateAuthDrawer
-              open={createDrawerOpen}
-              onClose={() => setCreateDrawerOpen(false)}
-              onCreate={handleCreateAuth}
-            />
-          )}
           {!createDrawerOpen && detailRecord && (
             <AuthDetailPanel
               record={detailRecord}
@@ -519,6 +528,16 @@ export default function App() {
           )}
         </div>
       </div>
+
+      <CreateAuthDrawer
+        open={createDrawerOpen}
+        onClose={() => {
+          setCreateDrawerOpen(false);
+          setCreateAuthDefaults(undefined);
+        }}
+        onCreate={handleCreateAuth}
+        defaults={createAuthDefaults}
+      />
 
       {notesRecord && (
         <NotesModal

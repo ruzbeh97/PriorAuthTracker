@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, ExternalLink, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import CopyButton from './CopyButton';
+import { formatAuthDate, groupByPatient } from '../utils';
 import type { AuthRecord, AuthState } from '../types';
-import { groupByPatient } from '../utils';
 import VisitsBar from './VisitsBar';
 import StatusBadge from './StatusBadge';
 import StateSelect from './StateSelect';
@@ -288,12 +288,12 @@ function TableRow({
 
       {/* Start */}
       <td className="px-4 py-4">
-        <span className="text-sm text-text-primary">{record.startDate || '--'}</span>
+        <span className="text-sm text-text-primary">{formatAuthDate(record.startDate, '--')}</span>
       </td>
 
       {/* End */}
       <td className="px-4 py-4">
-        <span className="text-sm text-text-primary">{record.endDate || '--'}</span>
+        <span className="text-sm text-text-primary">{formatAuthDate(record.endDate, '--')}</span>
       </td>
 
       {/* Visits */}

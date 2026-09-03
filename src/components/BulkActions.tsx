@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Archive, X, ChevronDown, MessageSquare, Trash2 } from 'lucide-react';
 import type { AuthState } from '../types';
-import { AUTH_STATES } from '../types';
+import { AUTH_STATES_WITH_ARCHIVED } from '../types';
 
 interface BulkActionsProps {
   selectedCount: number;
@@ -98,7 +98,7 @@ export default function BulkActions({
             </button>
             {openMenu === 'state' && (
               <DropdownList
-                items={AUTH_STATES as unknown as string[]}
+                items={AUTH_STATES_WITH_ARCHIVED as unknown as string[]}
                 onSelect={(val) => { onChangeState(val as AuthState); setOpenMenu(null); }}
               />
             )}

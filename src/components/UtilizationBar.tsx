@@ -77,32 +77,31 @@ export default function UtilizationBar({
 
   return (
     <div className="flex flex-col gap-1.5 min-w-[190px] w-full">
-      <div className={`relative w-full ${trackHeight}`}>
-        {/* Capacity outline marks the authorized allowance. It drops its right
-            edge once usage overflows so the fills read as running past the limit. */}
-        {showOutline && (
-          <div
-            className={`absolute inset-y-0 left-0 border-y border-l border-[#8c8c8c] rounded-l-full ${
-              exceeded ? '' : 'border-r rounded-r-full'
-            }`}
-            style={{ width: outlineWidth }}
-          />
-        )}
-        {/* Fills are layered rather than laid end-to-end: each starts at the left
-            edge and runs to its cumulative total, so the rounded cap of a shorter
-            segment sits on top of the one behind it with no gap. */}
-        <div
-          className="absolute inset-y-px left-0 rounded-full"
-          style={{ width: pct(used), backgroundColor: scheduledColor }}
-        />
-        <div
-          className="absolute inset-y-px left-0 rounded-full"
-          style={{ width: pct(claimed + completed), backgroundColor: completedColor }}
-        />
-        <div
-          className="absolute inset-y-px left-0 rounded-full"
-          style={{ width: pct(claimed), backgroundColor: claimedColor }}
-        />
+      <div className={`relative w-full ${trackHeight} p-px`}>
+        <div className="relative h-full w-full">
+          {showOutline && (
+            <div
+              className={`absolute inset-y-0 left-0 border border-[#8c8c8c] rounded-full ${
+                exceeded ? 'border-r-0 rounded-r-none' : ''
+              }`}
+              style={{ width: outlineWidth }}
+            />
+          )}
+          <div className="absolute inset-px overflow-hidden rounded-full">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: pct(used), backgroundColor: scheduledColor }}
+            />
+            <div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: pct(claimed + completed), backgroundColor: completedColor }}
+            />
+            <div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ width: pct(claimed), backgroundColor: claimedColor }}
+            />
+          </div>
+        </div>
       </div>
 
       {layout === 'row' ? (

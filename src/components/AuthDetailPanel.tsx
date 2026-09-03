@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
+import { AUTH_STATES } from '../types';
 import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
+import { formatAuthDate, formatAuthDateFromDate, parseAuthDate } from '../utils';
 
 interface AuthDetailPanelProps {
   record: AuthRecord;
@@ -82,7 +84,9 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   // Re-sync when the note's codes or units change, not just when a different row is picked.
   const initKey = [
     record.id,
-    ...(record.orderCpts ?? []).map((entry) => `${entry.orderId}:${entry.code}:${entry.units}`),
+    ...(record.orderCpts ?? []).map(
+      (entry) => `${entry.orderId}:${entry.code}:${entry.units}:${JSON.stringify(entry.details ?? [])}`,
+    ),
   ].join('|');
 
   if (initializedForRef.current !== initKey) {
@@ -111,6 +115,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             code: entry.code,
             unitTrackingType: entry.trackingType,
             units: entry.units,
+            details: entry.details,
           }))
         : [emptyCptEntry()],
     );
@@ -336,8 +341,8 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                     switch (field) {
                       case 'Authorization Number': oldVal = record.authNumber || '--'; break;
                       case 'Payer': oldVal = record.payer.name; break;
-                      case 'Start Date': oldVal = record.startDate || '--'; break;
-                      case 'End Date': oldVal = record.endDate || '--'; break;
+                      case 'Start Date': oldVal = formatAuthDate(record.startDate, '--'); break;
+                      case 'End Date': oldVal = formatAuthDate(record.endDate, '--'); break;
                       case 'Assigned To': oldVal = record.assignedTo; break;
                       case 'Provider': oldVal = record.provider; break;
                       case 'Facility': oldVal = record.facility; break;
@@ -370,8 +375,28 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             <EditableDetailRow editing={editing} label="Authorization Number" value={record.authNumber || '--'} editValue={editFields['Authorization Number']} onChange={(v) => setEditFields((p) => ({ ...p, 'Authorization Number': v }))} copyable={!!record.authNumber} />
             <EditableDetailRow editing={editing} label="Payer" value={record.payer.name} editValue={editFields['Payer']} onChange={(v) => setEditFields((p) => ({ ...p, 'Payer': v }))} copyable />
             <DetailRow label="Payer ID" value={`${record.payer.name}IL: ${record.payer.planId}`} copyable />
-            <EditableDetailRow editing={editing} label="Start Date" value={record.startDate || '--'} editValue={editFields['Start Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'Start Date': v }))} />
-            <EditableDetailRow editing={editing} label="End Date" value={record.endDate || '--'} editValue={editFields['End Date']} onChange={(v) => setEditFields((p) => ({ ...p, 'End Date': v }))} />
+            <EditableDetailRow
+              editing={editing}
+              label="Start Date"
+              value={formatAuthDate(record.startDate, '--')}
+              editValue={editFields['Start Date']}
+              onChange={(v) => {
+                if (editing) setEditFields((p) => ({ ...p, 'Start Date': v }));
+                else onDetailChange(record.id, 'Start Date', formatAuthDate(record.startDate, '--'), v);
+              }}
+              kind="date"
+            />
+            <EditableDetailRow
+              editing={editing}
+              label="End Date"
+              value={formatAuthDate(record.endDate, '--')}
+              editValue={editFields['End Date']}
+              onChange={(v) => {
+                if (editing) setEditFields((p) => ({ ...p, 'End Date': v }));
+                else onDetailChange(record.id, 'End Date', formatAuthDate(record.endDate, '--'), v);
+              }}
+              kind="date"
+            />
             {!record.orderBased && (
               <div className="flex items-center gap-2 py-0.5">
                 <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
@@ -399,6 +424,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                     key={entry.id}
                     entry={entry}
                     codeOptions={orderCptOptions}
+                    showOrderDetails={record.orderSource === 'visit-note'}
                     onChange={(next) =>
                       setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
                     }
@@ -442,9 +468,14 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
             )}
             <div className="flex items-start gap-2 py-1">
               <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
-              <span className="px-2 py-0.5 bg-primary/10 rounded-lg text-xs font-medium text-primary">
-                {record.state}
-              </span>
+              <EditableSelect
+                value={record.state}
+                onChange={(value) => {
+                  if (value === record.state) return;
+                  onDetailChange(record.id, 'State', record.state, value);
+                }}
+                options={AUTH_STATES}
+              />
             </div>
             <EditableDetailRow editing={editing} label="Assigned To" value={record.assignedTo} editValue={editFields['Assigned To']} onChange={(v) => setEditFields((p) => ({ ...p, 'Assigned To': v }))} options={assigneeOptions} />
             <EditableDetailRow editing={editing} label="Provider" value={record.provider} editValue={editFields['Provider']} onChange={(v) => setEditFields((p) => ({ ...p, 'Provider': v }))} options={providerOptions} />
@@ -1772,6 +1803,10 @@ interface CptEntry {
   code: string;
   unitTrackingType: string;
   units: string;
+  details?: Array<{
+    label: string;
+    value: string;
+  }>;
 }
 
 function emptyCptEntry(): CptEntry {
@@ -1870,11 +1905,13 @@ function CptFieldSelect({
 function CptTrackingBlock({
   entry,
   codeOptions = CPT_CODES,
+  showOrderDetails = false,
   onChange,
   onDelete,
 }: {
   entry: CptEntry;
   codeOptions?: CptSelectOption[];
+  showOrderDetails?: boolean;
   onChange: (next: CptEntry) => void;
   onDelete: () => void;
 }) {
@@ -1891,41 +1928,60 @@ function CptTrackingBlock({
             onChange={(code) => onChange({ ...entry, code })}
           />
         </div>
-        <div className="flex items-start gap-4">
-          <div className="w-40 shrink-0">
-            <p className="text-sm leading-[22px] text-accent-700">Tracking Type</p>
-            <p className="text-xs font-medium leading-[18px] text-text-secondary">
-              Counts every unit of each selected CPT code used in claims
-            </p>
+        {showOrderDetails ? (
+          <div className="flex flex-col gap-2">
+            {(entry.details ?? []).map((field, index) => (
+              <div key={`${field.label}-${index}`} className="flex items-start gap-4">
+                <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">
+                  {field.label}
+                </span>
+                <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-[22px] text-text-disabled">
+                  {field.value || '--'}
+                </span>
+              </div>
+            ))}
           </div>
-          <CptFieldSelect
-            value={entry.unitTrackingType}
-            placeholder="Units"
-            options={CPT_UNIT_TYPES}
-            onChange={(unitTrackingType) => onChange({ ...entry, unitTrackingType })}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">Units</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={entry.units}
-            onChange={(e) => onChange({ ...entry, units: e.target.value.replace(/[^\d]/g, '') })}
-            placeholder="Enter Units"
-            className="flex-1 min-w-0 h-7 px-1.5 py-0.5 rounded-lg bg-surface-variant text-sm text-text-primary placeholder:text-[#808080] focus:outline-none"
-          />
-        </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-0 text-text-primary hover:text-status-expired transition-colors"
-            title="Remove CPT"
-          >
-            <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-start gap-4">
+              <div className="w-40 shrink-0">
+                <p className="text-sm leading-[22px] text-accent-700">Tracking Type</p>
+                <p className="text-xs font-medium leading-[18px] text-text-secondary">
+                  Counts every unit of each selected CPT code used in claims
+                </p>
+              </div>
+              <CptFieldSelect
+                value={entry.unitTrackingType}
+                placeholder="Units"
+                options={CPT_UNIT_TYPES}
+                onChange={(unitTrackingType) => onChange({ ...entry, unitTrackingType })}
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">Units</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={entry.units}
+                onChange={(e) => onChange({ ...entry, units: e.target.value.replace(/[^\d]/g, '') })}
+                placeholder="Enter Units"
+                className="flex-1 min-w-0 h-7 px-1.5 py-0.5 rounded-lg bg-surface-variant text-sm text-text-primary placeholder:text-[#808080] focus:outline-none"
+              />
+            </div>
+          </>
+        )}
+        {!showOrderDetails && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onDelete}
+              className="p-0 text-text-primary hover:text-status-expired transition-colors"
+              title="Remove CPT"
+            >
+              <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2024,7 +2080,7 @@ function AppointmentRow({ dateTime, authNumber, dateOptions, authOptions, onAuth
   );
 }
 
-function EditableDetailRow({ editing, label, value, editValue, onChange, copyable, options }: {
+function EditableDetailRow({ editing, label, value, editValue, onChange, copyable, options, kind }: {
   editing: boolean;
   label: string;
   value: string;
@@ -2032,7 +2088,16 @@ function EditableDetailRow({ editing, label, value, editValue, onChange, copyabl
   onChange: (v: string) => void;
   copyable?: boolean;
   options?: string[];
+  kind?: 'text' | 'date';
 }) {
+  if (kind === 'date') {
+    return (
+      <div className="flex items-center gap-2 py-0.5">
+        <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
+        <DatePickerField value={editing ? (editValue ?? value) : value} onChange={onChange} />
+      </div>
+    );
+  }
   if (editing) {
     return (
       <div className="flex items-center gap-2 py-0.5">
@@ -2051,6 +2116,121 @@ function EditableDetailRow({ editing, label, value, editValue, onChange, copyabl
     );
   }
   return <DetailRow label={label} value={value} copyable={copyable} />;
+}
+
+function parseDisplayDate(value: string): Date | null {
+  return parseAuthDate(value);
+}
+
+function formatDisplayDate(date: Date): string {
+  return formatAuthDateFromDate(date);
+}
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function DatePickerField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = parseDisplayDate(value);
+  const [cursor, setCursor] = useState(() => selected ?? new Date());
+
+  useEffect(() => {
+    if (!open) return;
+    setCursor(parseDisplayDate(value) ?? new Date());
+  }, [open, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const monthLabel = cursor.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const startWeekday = new Date(cursor.getFullYear(), cursor.getMonth(), 1).getDay();
+  const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+  const cells = Array.from({ length: startWeekday + daysInMonth }, (_, index) =>
+    index < startWeekday ? null : index - startWeekday + 1,
+  );
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const display = selected ? formatDisplayDate(selected) : formatAuthDate(value, '');
+
+  return (
+    <div ref={rootRef} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={`flex w-full items-center gap-2 rounded border bg-white px-2 py-1 text-left text-sm leading-[22px] transition-colors ${
+          open ? 'border-primary' : 'border-outline hover:border-primary/40'
+        }`}
+      >
+        <Calendar className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={1.5} />
+        <span className={`min-w-0 flex-1 truncate ${display ? 'text-text-primary' : 'text-text-secondary'}`}>
+          {display || 'MM/DD/YYYY'}
+        </span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-40 mt-1 w-[248px] rounded-lg border border-outline bg-white p-3 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              className="flex size-7 items-center justify-center rounded-full hover:bg-surface-variant"
+            >
+              <ChevronLeft className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
+            </button>
+            <span className="text-sm font-medium text-text-primary">{monthLabel}</span>
+            <button
+              type="button"
+              aria-label="Next month"
+              onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              className="flex size-7 items-center justify-center rounded-full hover:bg-surface-variant"
+            >
+              <ChevronRight className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 text-center text-[11px] font-medium text-text-secondary">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+              <span key={day} className="py-1">{day}</span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 text-center">
+            {cells.map((day, index) => {
+              if (!day) return <span key={`empty-${index}`} className="h-8" />;
+              const date = new Date(cursor.getFullYear(), cursor.getMonth(), day);
+              const isSelected = selected ? sameDay(date, selected) : false;
+              const isToday = sameDay(date, new Date());
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => {
+                    onChange(formatDisplayDate(date));
+                    setOpen(false);
+                  }}
+                  className={`mx-auto flex size-8 items-center justify-center rounded-full text-xs ${
+                    isSelected
+                      ? 'bg-primary text-white'
+                      : isToday
+                        ? 'text-primary ring-1 ring-primary'
+                        : 'text-text-primary hover:bg-surface-variant'
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function EditableSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {

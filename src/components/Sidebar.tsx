@@ -39,6 +39,7 @@ const topLevelItems: NavItem[] = [
   { label: 'Home', icon: House },
   { label: 'Visits', icon: Calendar },
   { label: 'Tasks', icon: CircleCheck },
+  { label: 'Preferences', icon: Settings },
 ];
 
 const navGroups: NavGroup[] = [
