@@ -1,0 +1,542 @@
+.clinical-note-page {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  grid-template-columns: 160px minmax(0, 1fr);
+  overflow: hidden;
+  color: #454545;
+  background: #f4f4fb;
+  font-size: 11px;
+}
+
+.note-side-navigation {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 12px 9px 8px;
+  border-right: 1px solid #dfdfea;
+  background: #f3f3fb;
+}
+
+.note-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: #171717;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.note-brand span {
+  font-size: 28px;
+  line-height: 16px;
+  transform: rotate(20deg);
+}
+
+.note-side-navigation nav {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.note-side-navigation section {
+  display: grid;
+  margin-bottom: 16px;
+}
+
+.note-side-navigation h2 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 4px;
+  color: #686872;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.note-side-navigation a {
+  min-height: 21px;
+  padding: 4px 13px;
+  color: #4d4d57;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.note-side-navigation a:hover {
+  color: #155eef;
+  background: #e8e8fa;
+}
+
+.note-side-navigation a.is-muted {
+  color: #aaaab2;
+}
+
+.note-nav-footer {
+  margin-top: auto;
+  border-top: 1px solid #dfdfea;
+}
+
+.note-nav-footer > a {
+  display: block;
+  padding: 10px 8px;
+  color: #44444c;
+  font-weight: 600;
+}
+
+.note-nav-footer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.note-nav-footer > div > span {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: #5b4bea;
+  font-size: 9px;
+}
+
+.note-nav-footer button,
+.note-product-bar button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.clinical-note-main {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: 29px auto auto auto minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 0 0 0 8px;
+  background: #fff;
+}
+
+.note-product-bar {
+  display: grid;
+  grid-template-columns: 1fr minmax(210px, 360px) 1fr;
+  align-items: center;
+  padding: 0 12px 0 7px;
+  border-bottom: 1px solid #e9e9ef;
+  background: #f5f5fc;
+}
+
+.note-product-bar > button {
+  width: 24px;
+  color: #50505a;
+  justify-self: start;
+}
+
+.note-product-bar > label {
+  display: flex;
+  height: 20px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #888895;
+  background: #eaeaf2;
+}
+
+.note-product-bar label svg {
+  width: 11px;
+}
+
+.note-product-bar input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+}
+
+.note-product-bar kbd {
+  font-family: inherit;
+  font-size: 8px;
+}
+
+.note-product-actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+}
+
+.note-product-actions .note-ai-button {
+  color: #3538cd;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.patient-chart-header {
+  padding: 7px 14px 0;
+  border-bottom: 1px solid #e6e6eb;
+}
+
+.patient-chart-topline,
+.patient-chart-identity,
+.patient-chart-actions,
+.patient-chart-tabs,
+.encounter-toolbar,
+.encounter-toolbar > div,
+.encounter-title-row,
+.encounter-metadata {
+  display: flex;
+  align-items: center;
+}
+
+.patient-chart-topline,
+.encounter-toolbar {
+  justify-content: space-between;
+}
+
+.patient-chart-identity,
+.patient-chart-actions {
+  gap: 8px;
+}
+
+.patient-chart-avatar {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: #35386f;
+  background: #bfc5df;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.patient-chart-identity strong {
+  color: #1d40bd;
+  font-size: 10px;
+}
+
+.patient-chart-identity > span:not(.patient-chart-avatar) {
+  color: #62626b;
+  font-size: 9px;
+}
+
+.patient-chart-identity button,
+.patient-chart-actions button,
+.patient-chart-tabs button,
+.encounter-toolbar button {
+  padding: 2px 4px;
+  border: 0;
+  color: #3f3f49;
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.patient-chart-actions .book-appointment {
+  height: 23px;
+  padding: 0 11px;
+  border: 1px solid #dedee5;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
+}
+
+.patient-chart-tabs {
+  height: 31px;
+  gap: 12px;
+  margin-top: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.patient-chart-tabs button {
+  align-self: stretch;
+  border-bottom: 2px solid transparent;
+  font-size: 10px;
+}
+
+.patient-chart-tabs button.is-active {
+  color: #173ec7;
+  border-bottom-color: #173ec7;
+  font-weight: 600;
+}
+
+.chart-tab-count {
+  margin-left: auto;
+}
+
+.encounter-toolbar {
+  min-height: 31px;
+  padding: 0 15px;
+  border-bottom: 1px solid #e6e6eb;
+}
+
+.encounter-toolbar > div {
+  gap: 8px;
+}
+
+.encounter-toolbar button {
+  color: #1538bd;
+  font-size: 9px;
+}
+
+.encounter-toolbar > div:first-child button {
+  color: #55555d;
+}
+
+.encounter-summary {
+  padding: 7px 15px 6px;
+  border-bottom: 1px solid #e6e6eb;
+}
+
+.encounter-title-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 120px repeat(3, minmax(135px, 180px));
+  gap: 10px;
+}
+
+.encounter-title-row h1 {
+  margin: 0;
+  color: #222228;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.encounter-title-row > span {
+  color: #66666f;
+  font-size: 9px;
+}
+
+.encounter-title-row label {
+  position: relative;
+  display: grid;
+  height: 29px;
+  padding: 3px 7px;
+  border: 1px solid #e3e3e8;
+  border-radius: 4px;
+  color: #9999a2;
+  font-size: 7px;
+}
+
+.encounter-title-row select {
+  border: 0;
+  outline: 0;
+  color: #4b4b53;
+  background: #fff;
+  font: inherit;
+  font-size: 9px;
+}
+
+.encounter-metadata {
+  gap: 14px;
+  margin-top: 6px;
+  color: #777780;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.encounter-metadata strong {
+  color: #33333b;
+  font-weight: 500;
+}
+
+.encounter-metadata strong.is-danger {
+  color: #cc3a35;
+}
+
+.encounter-metadata button {
+  margin-left: auto;
+  border: 0;
+  color: #1840c7;
+  background: transparent;
+  font-size: 9px;
+}
+
+.clinical-note-workspace {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 150px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.clinical-section-nav {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 2px 8px;
+  overflow: hidden;
+}
+
+.clinical-section-nav button {
+  min-height: 20px;
+  padding: 3px 11px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  color: #92929a;
+  background: transparent;
+  cursor: pointer;
+  font-size: 8px;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.clinical-section-nav button.is-active {
+  color: #3957ad;
+  background: #e8e8fc;
+}
+
+.clinical-note-content {
+  min-height: 0;
+  padding: 0 18px 60px;
+  overflow-y: auto;
+}
+
+.section-picker {
+  display: flex;
+  height: 39px;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.section-picker label {
+  display: grid;
+  width: 280px;
+  height: 28px;
+  padding: 3px 10px;
+  border-left: 1px solid #ececf0;
+  color: #aaaab0;
+  font-size: 7px;
+}
+
+.section-picker input {
+  border: 0;
+  outline: 0;
+  color: #888890;
+  font: inherit;
+  font-size: 9px;
+}
+
+.section-picker button {
+  height: 28px;
+  border: 0;
+  color: #cfcfd4;
+  background: transparent;
+  font-size: 9px;
+}
+
+.clinical-note-content section {
+  min-height: 90px;
+  padding: 7px 0 18px;
+}
+
+.clinical-note-content section + section {
+  margin-top: 4px;
+}
+
+.clinical-note-content h2 {
+  margin: 0;
+  color: #55555d;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.empty-state {
+  margin: 18px 0 0;
+  color: #8b8b93;
+  font-size: 10px;
+  text-align: center;
+}
+
+.clinical-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.clinical-heading-row > span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #777f94;
+  background: #f1f3f8;
+  font-size: 7px;
+}
+
+.clinical-fields {
+  display: grid;
+  gap: 15px;
+  margin-top: 22px;
+}
+
+.clinical-fields > div {
+  display: grid;
+  grid-template-columns: 125px 1fr auto;
+  color: #9c9ca4;
+  font-size: 9px;
+}
+
+.clinical-fields strong {
+  color: #787880;
+  font-weight: 400;
+}
+
+.signed-note-banner {
+  position: absolute;
+  right: 108px;
+  bottom: 6px;
+  left: 250px;
+  display: flex;
+  min-height: 55px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border: 1px solid #e1e1e6;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(16 24 40 / 16%);
+}
+
+.signed-note-banner > div {
+  display: grid;
+  gap: 4px;
+}
+
+.signed-note-banner strong {
+  color: #44444c;
+  font-size: 10px;
+}
+
+.signed-note-banner span {
+  color: #777780;
+  font-size: 8px;
+}
+
+.signed-note-banner button {
+  height: 31px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #173fe0;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+@media (max-width: 800px) {
+  .clinical-note-page {
+    grid-template-columns: 1fr;
+  }
+
+  .note-side-navigation {
+    display: none;
+  }
+
+  .encounter-title-row {
+    grid-template-columns: 1fr;
+  }
+}

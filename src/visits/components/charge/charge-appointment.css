@@ -1,0 +1,308 @@
+.charge-overlay {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px 9.2vw 42px;
+  background: rgb(20 20 28 / 52%);
+}
+
+.charge-modal {
+  display: grid;
+  width: min(100%, 836px);
+  height: min(100%, 514px);
+  grid-template-rows: 55px minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(16 24 40 / 30%);
+}
+
+.charge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid #ececf0;
+}
+
+.charge-header h2 {
+  margin: 0;
+  color: #292931;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.charge-header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #2e2e35;
+  background: transparent;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: 300;
+}
+
+.charge-body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 224px;
+}
+
+.charge-editor {
+  min-width: 0;
+  padding: 19px 16px;
+}
+
+.charge-patient-tabs {
+  display: flex;
+  height: 30px;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #ececf0;
+}
+
+.charge-patient-tabs button {
+  height: 30px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #1640c5;
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.charge-patient-tabs button.is-active {
+  border-bottom-color: #1640c5;
+}
+
+.charge-line {
+  display: grid;
+  grid-template-columns: minmax(154px, 1fr) minmax(154px, 1fr) 134px 24px;
+  align-items: end;
+  gap: 10px;
+}
+
+.charge-line > label,
+.charge-field-section > select,
+.floating-select {
+  height: 36px;
+  border: 1px solid #e2e2e7;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.charge-line > label {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 13px 8px 4px;
+}
+
+.charge-line > label > span,
+.floating-select > span {
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  color: #8c8c95;
+  font-size: 7px;
+}
+
+.charge-line select,
+.charge-line input,
+.charge-field-section select,
+.floating-select select {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #575760;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+}
+
+.charge-amount > div {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.charge-amount b {
+  color: #404048;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.remove-charge-line {
+  height: 36px;
+  padding: 0;
+  border: 0;
+  color: #282830;
+  background: transparent;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.charge-editor-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 11px;
+}
+
+.charge-editor-actions button {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid #1f49d8;
+  border-radius: 999px;
+  color: #1f49d8;
+  background: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.charge-payment-panel {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) 48px;
+  margin: 16px 17px 16px 0;
+  overflow: hidden;
+  border: 1px solid #e5e5ea;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(16 24 40 / 13%);
+}
+
+.charge-payment-scroll {
+  min-height: 0;
+  padding: 0 11px;
+  overflow-y: auto;
+}
+
+.charge-field-section {
+  padding: 12px 0;
+  border-bottom: 1px solid #ededf0;
+}
+
+.charge-field-section h3 {
+  margin: 0 0 10px;
+  color: #3b3b43;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.charge-field-section > select {
+  width: 100%;
+  padding: 0 10px;
+  color: #505058;
+}
+
+.floating-select {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 13px 8px 4px;
+}
+
+.payment-link-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 7px 3px;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.payment-link-options label,
+.other-payment-options label,
+.gift-card-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #5d5d65;
+  font-size: 9px;
+}
+
+.payment-link-options label:not(:first-child) {
+  padding-left: 8px;
+}
+
+.charge-payment-panel input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #2046e4;
+}
+
+.other-payment-options {
+  display: grid;
+  gap: 9px;
+  padding: 9px 3px 3px;
+}
+
+.other-payment-options label.is-disabled {
+  color: #aaaab1;
+}
+
+.gift-card-option {
+  padding: 17px 7px;
+}
+
+.charge-payment-panel footer {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-top: 1px solid #e5e5ea;
+}
+
+.charge-payment-panel footer button {
+  width: 100%;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #173fe7;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+@media (min-width: 1200px) {
+  .charge-modal {
+    width: 82vw;
+    max-width: 1280px;
+    height: 89vh;
+    max-height: 720px;
+  }
+
+  .charge-body {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+@media (max-width: 700px) {
+  .charge-overlay {
+    padding: 12px;
+  }
+
+  .charge-body {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .charge-line {
+    grid-template-columns: 1fr;
+  }
+
+  .charge-payment-panel {
+    margin: 0 16px 16px;
+  }
+}

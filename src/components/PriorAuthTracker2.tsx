@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, PanelLeftClose } from 'lucide-react';
+import { ChevronDown, ChevronUp, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { mockAuthRecords } from '../data';
 import { groupRecords, formatAuthDate, parseAuthDateSortValue } from '../utils';
 import type { GroupingKey, GroupOrderField, PatientGroup } from '../utils';
@@ -15,6 +15,7 @@ import { OPEN_CREATE_AUTH_EVENT } from './CreateAuthDrawer';
 import type { AuthRecord, AuthState, TimelineEntry } from '../types';
 import { migrateAuthState } from '../types';
 import UtilizationBar from './UtilizationBar';
+import { parseAssigneeNames } from '../tasks';
 
 function StateChip({ state }: { state: string }) {
   if (state === 'Authorized' || state === 'Scheduled') {
@@ -64,8 +65,21 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
-function authTypeLabel(record: AuthRecord) {
-  return record.tags.includes('REFERRAL') ? 'Referral' : 'Pre-Certification';
+function trackingTypeLabel(record: AuthRecord) {
+  return record.orderBased ? 'CPTs' : 'Visits';
+}
+
+function TrackingTypeChip({ record }: { record: AuthRecord }) {
+  const cpt = record.orderBased;
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-sm text-text-primary ${
+        cpt ? 'bg-[#f3e6d4]' : 'bg-[#e6e9fb]'
+      }`}
+    >
+      {cpt ? 'CPTs' : 'Visits'}
+    </span>
+  );
 }
 
 function sortValue(record: AuthRecord, field: OrderField) {
@@ -85,7 +99,7 @@ function sortValue(record: AuthRecord, field: OrderField) {
     case 'status':
       return record.status.toLowerCase();
     case 'type':
-      return authTypeLabel(record).toLowerCase();
+      return trackingTypeLabel(record).toLowerCase();
   }
 }
 
@@ -153,6 +167,103 @@ function AvatarGroup({ assignedTo }: { assignedTo: string }) {
         );
       })}
     </div>
+  );
+}
+
+function AssignmentMessageModal({
+  assigneeNames,
+  patientName,
+  onSubmit,
+  onClose,
+}: {
+  assigneeNames: string[];
+  patientName: string;
+  onSubmit: (message: string) => void;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const submit = () => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+  };
+
+  const assigneeLabel = assigneeNames.join(', ');
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-outline px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <MessageSquare className="h-5 w-5 text-primary" strokeWidth={1.5} />
+            <div>
+              <h2 className="text-base font-medium text-text-primary">New task</h2>
+              <p className="text-xs text-text-secondary">
+                Assigning {assigneeLabel}
+                {patientName ? ` · ${patientName}` : ''}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 hover:bg-surface-variant">
+            <X className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 px-5 py-4">
+          <label className="text-sm text-text-secondary">Message</label>
+          <textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="Write the task name that will appear in Tasks..."
+            rows={4}
+            className="min-h-[96px] w-full resize-none rounded-md bg-[#f3f4f6] px-3 py-2 text-sm leading-[22px] text-text-primary outline-none placeholder:text-text-secondary"
+          />
+        </div>
+        <div className="flex justify-end gap-2 border-t border-outline px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-variant"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!message.trim()}
+            onClick={submit}
+            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Create task
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -414,7 +525,9 @@ interface PriorAuthTracker2Props {
     record: AuthRecord,
     previousAssignedTo: string,
     nextAssignedTo: string,
+    taskName?: string,
   ) => void;
+  onOrderAuthRecordUpdate?: (record: AuthRecord) => void;
   onSelectedRecordChange?: (record: AuthRecord | null, index: number, total: number) => void;
   registerNavigate?: (fn: (dir: 'prev' | 'next') => void) => void;
   registerClearSelection?: (fn: () => void) => void;
@@ -423,6 +536,7 @@ interface PriorAuthTracker2Props {
 export default function PriorAuthTracker2({
   orderAuthRecords = [],
   onAuthorizationAssigned,
+  onOrderAuthRecordUpdate,
   onSelectedRecordChange,
   registerNavigate,
   registerClearSelection,
@@ -453,6 +567,12 @@ export default function PriorAuthTracker2({
   const [groupDir, setGroupDir] = useState<'asc' | 'desc'>('asc');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<DisplayColumn>>(() => new Set(DEFAULT_VISIBLE_COLUMNS));
+  const [assignmentPrompt, setAssignmentPrompt] = useState<{
+    record: AuthRecord;
+    previousAssignedTo: string;
+    nextAssignedTo: string;
+    addedNames: string[];
+  } | null>(null);
 
   useEffect(() => {
     // Only rows synced from a note carry orderSource; seeded CPT rows must survive.
@@ -587,9 +707,32 @@ export default function PriorAuthTracker2({
   const handleAssignRecord = useCallback((recordId: string, names: string[]) => {
     const nextAssignedTo = names.join(', ');
     const record = records.find((entry) => entry.id === recordId);
-    if (record) onAuthorizationAssigned?.(record, record.assignedTo, nextAssignedTo);
+    if (record) {
+      const addedNames = parseAssigneeNames(nextAssignedTo).filter(
+        (name) => !parseAssigneeNames(record.assignedTo).includes(name),
+      );
+      if (addedNames.length > 0) {
+        setAssignmentPrompt({
+          record,
+          previousAssignedTo: record.assignedTo,
+          nextAssignedTo,
+          addedNames,
+        });
+      }
+    }
     setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, assignedTo: nextAssignedTo } : r)));
-  }, [onAuthorizationAssigned, records]);
+  }, [records]);
+
+  const handleAssignmentMessage = useCallback((message: string) => {
+    if (!assignmentPrompt) return;
+    onAuthorizationAssigned?.(
+      assignmentPrompt.record,
+      assignmentPrompt.previousAssignedTo,
+      assignmentPrompt.nextAssignedTo,
+      message,
+    );
+    setAssignmentPrompt(null);
+  }, [assignmentPrompt, onAuthorizationAssigned]);
 
   const handleReassignVisit = useCallback((
     fromRecordId: string,
@@ -627,10 +770,22 @@ export default function PriorAuthTracker2({
     const entry: TimelineEntry = { id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, timestamp: now, author: 'Adam Smith', action: { kind: 'detail_changed', field, from, to } };
     if (field === 'Assigned To') {
       const record = records.find((item) => item.id === recordId);
-      if (record) onAuthorizationAssigned?.(record, from, to);
+      if (record) {
+        const addedNames = parseAssigneeNames(to).filter(
+          (name) => !parseAssigneeNames(from).includes(name),
+        );
+        if (addedNames.length > 0) {
+          setAssignmentPrompt({
+            record,
+            previousAssignedTo: from,
+            nextAssignedTo: to,
+            addedNames,
+          });
+        }
+      }
     }
-    setRecords((prev) =>
-      prev.map((r) => {
+    setRecords((prev) => {
+      const next = prev.map((r) => {
         if (r.id !== recordId) return r;
         const updated = { ...r, timeline: [...(r.timeline || []), entry] };
         switch (field) {
@@ -642,11 +797,16 @@ export default function PriorAuthTracker2({
           case 'End Date': updated.endDate = to; break;
           case 'Payer': updated.payer = { ...r.payer, name: to }; break;
           case 'State': updated.state = migrateAuthState(to); break;
+          case 'Visits Authorized': updated.visitsAuthorized = parseInt(to, 10) || 0; break;
+          case 'Auth Notes': updated.authNotes = to; break;
         }
         return updated;
-      })
-    );
-  }, [onAuthorizationAssigned, records]);
+      });
+      const updated = next.find((r) => r.id === recordId);
+      if (updated?.orderSource) onOrderAuthRecordUpdate?.(updated);
+      return next;
+    });
+  }, [onOrderAuthRecordUpdate, records]);
 
   const handleClearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
@@ -678,8 +838,14 @@ export default function PriorAuthTracker2({
   }, [onAuthorizationAssigned, records, selectedIds]);
 
   const handleBulkChangeState = useCallback((state: AuthState) => {
-    setRecords((prev) => prev.map((r) => (selectedIds.has(r.id) ? { ...r, state } : r)));
-  }, [selectedIds]);
+    setRecords((prev) => {
+      const next = prev.map((r) => (selectedIds.has(r.id) ? { ...r, state } : r));
+      next.forEach((record) => {
+        if (selectedIds.has(record.id) && record.orderSource) onOrderAuthRecordUpdate?.(record);
+      });
+      return next;
+    });
+  }, [onOrderAuthRecordUpdate, selectedIds]);
 
   const handleBulkAddTags = useCallback((tags: string[]) => {
     setRecords((prev) => prev.map((r) => {
@@ -696,9 +862,15 @@ export default function PriorAuthTracker2({
   }, [selectedIds]);
 
   const handleBulkArchive = useCallback(() => {
-    setRecords((prev) => prev.map((r) => (selectedIds.has(r.id) ? { ...r, state: 'Archived' as AuthState } : r)));
+    setRecords((prev) => {
+      const next = prev.map((r) => (selectedIds.has(r.id) ? { ...r, state: 'Archived' as AuthState } : r));
+      next.forEach((record) => {
+        if (selectedIds.has(record.id) && record.orderSource) onOrderAuthRecordUpdate?.(record);
+      });
+      return next;
+    });
     setSelectedIds(new Set());
-  }, [selectedIds]);
+  }, [onOrderAuthRecordUpdate, selectedIds]);
 
   const handleBulkDelete = useCallback(() => {
     setRecords((prev) => prev.filter((r) => !selectedIds.has(r.id)));
@@ -724,15 +896,8 @@ export default function PriorAuthTracker2({
     <main className="flex flex-1 min-w-0 min-h-0 relative overflow-hidden p-2">
       <div className={`flex flex-col min-h-0 min-w-0 bg-white border border-outline overflow-hidden relative transition-all duration-200 ${isDetailOpen ? 'rounded-l-lg border-r-0' : 'rounded-lg'} ${isDetailOpen ? (tableCollapsed ? 'w-0 opacity-0 pointer-events-none p-0 border-0' : 'flex-1') : 'flex-1'}`}>
       {isDetailOpen && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-outline shrink-0">
+        <div className="flex items-center px-4 py-3 border-b border-outline shrink-0">
           <span className="text-base font-medium text-text-primary">Authorization Table</span>
-          <button
-            onClick={() => setTableCollapsed(true)}
-            className="p-1 rounded hover:bg-surface-variant transition-colors"
-            title="Collapse table"
-          >
-            <PanelLeftClose className="w-4 h-4 text-text-secondary" />
-          </button>
         </div>
       )}
 
@@ -1216,7 +1381,7 @@ export default function PriorAuthTracker2({
                       )}
                       {visibleColumns.has('type') && (
                       <td className="px-4 py-4 w-[140px]">
-                        <span className="text-sm text-text-primary truncate block">{authTypeLabel(record)}</span>
+                        <TrackingTypeChip record={record} />
                       </td>
                       )}
                       {visibleColumns.has('facility') && (
@@ -1299,6 +1464,15 @@ export default function PriorAuthTracker2({
           onDeleteNote={handleDeleteNote}
           tableCollapsed={tableCollapsed}
           onExpandTable={() => setTableCollapsed(false)}
+        />
+      )}
+
+      {assignmentPrompt && (
+        <AssignmentMessageModal
+          assigneeNames={assignmentPrompt.addedNames}
+          patientName={assignmentPrompt.record.patient.name}
+          onSubmit={handleAssignmentMessage}
+          onClose={() => setAssignmentPrompt(null)}
         />
       )}
 

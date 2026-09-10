@@ -1,0 +1,116 @@
+.searchable-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-dropdown-input {
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.searchable-dropdown-value {
+  flex: 1;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchable-dropdown-placeholder {
+  color: #666666;
+}
+
+.searchable-dropdown-arrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.searchable-dropdown-input:hover,
+.searchable-dropdown-input:focus-within {
+  border-color: #1132ee;
+}
+
+.searchable-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 320px;
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.searchable-dropdown-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9eaeb;
+}
+
+.searchable-dropdown-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  color: #111827;
+  background: transparent;
+}
+
+.searchable-dropdown-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.searchable-dropdown-options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.searchable-dropdown-option {
+  padding: 8px 12px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 22px;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: normal;
+}
+
+.searchable-dropdown-option:hover {
+  background-color: #f7f7f7;
+}
+
+.searchable-dropdown-option.selected {
+  background-color: #f0f4ff;
+  color: #1132ee;
+}
+
+.searchable-dropdown-option-empty {
+  color: #9ca3af;
+  cursor: default;
+  pointer-events: none;
+}

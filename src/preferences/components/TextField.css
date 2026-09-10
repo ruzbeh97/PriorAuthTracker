@@ -1,0 +1,41 @@
+.text-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.text-field-input {
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px 0 12px;
+  position: relative;
+}
+
+.text-field-input-element {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #1a1a1a;
+  padding: 6px 0;
+}
+
+.text-field-input-element::placeholder {
+  color: #666666;
+}
+
+.text-field-input:focus-within {
+  border-color: #1132ee;
+}
+

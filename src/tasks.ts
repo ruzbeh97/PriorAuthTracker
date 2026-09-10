@@ -163,18 +163,19 @@ export function tasksFromAuthAssignment(
   record: Pick<AuthRecord, 'id' | 'patient' | 'authNumber'>,
   previousAssignedTo: string,
   nextAssignedTo: string,
+  taskName?: string,
 ): TaskRow[] {
   const previous = new Set(parseAssigneeNames(previousAssignedTo));
   const added = parseAssigneeNames(nextAssignedTo).filter((name) => !previous.has(name));
   const patient = record.patient.name;
   const dueDate = defaultDueDate();
+  const name = taskName?.trim()
+    || (patient ? `Complete prior authorization for ${patient}` : 'Complete prior authorization');
 
-  return added.map((name, index) => ({
-    id: `task-auth-${record.id}-${name}-${Date.now()}-${index}`,
-    name: patient
-      ? `Complete prior authorization for ${patient}`
-      : 'Complete prior authorization',
-    assignedTo: name,
+  return added.map((assignee, index) => ({
+    id: `task-auth-${record.id}-${assignee}-${Date.now()}-${index}`,
+    name,
+    assignedTo: assignee,
     assigneeKind: 'person',
     assignedBy: CURRENT_USER,
     patient,

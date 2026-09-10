@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare, NotebookPen } from 'lucide-react';
+import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelLeftOpen, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare, NotebookPen } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
 import { AUTH_STATES } from '../types';
 import UtilizationBar from './UtilizationBar';
@@ -35,6 +35,19 @@ const PAYER_PORTAL_URLS: Record<string, string> = {
   'Medicaid': 'https://www.medicaid.gov/',
 };
 
+const PAYER_OPTIONS = [
+  'Priority Health',
+  'California Blue Shield',
+  'Self-pay',
+  'Aetna',
+  'UHC',
+  'UnitedHealthcare',
+  'Cigna',
+  'BCBS',
+  'Medicare',
+  'Humana',
+];
+
 const STATUS_DOT_COLORS: Record<string, string> = {
   'Active': 'bg-status-active',
   'Expiring Soon': 'bg-status-expiring',
@@ -61,15 +74,13 @@ interface PendingReassignment {
   type: 'completed' | 'scheduled';
 }
 
-export default function AuthDetailPanel({ record, allRecords, onReassignVisit, onDetailChange, onAddNote, onDeleteNote, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
+export default function AuthDetailPanel({ record, allRecords, onClose, onReassignVisit, onDetailChange, onAddNote, onDeleteNote, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
 
   const [completedAppts, setCompletedAppts] = useState<ExceededAppt[]>([]);
   const [scheduledAppts, setScheduledAppts] = useState<ExceededAppt[]>([]);
   const [pendingReassignments, setPendingReassignments] = useState<PendingReassignment[]>([]);
-  const [editing, setEditing] = useState(false);
-  const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [newNote, setNewNote] = useState('');
   const [trackingType, setTrackingType] = useState<'Visits' | 'CPTs'>('Visits');
   const [cptEntries, setCptEntries] = useState<CptEntry[]>([emptyCptEntry()]);
@@ -135,7 +146,12 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [portalOpen, setPortalOpen] = useState(false);
 
-  const hasPendingChanges = pendingReassignments.length > 0 || Object.keys(editFields).length > 0;
+  const hasPendingChanges = pendingReassignments.length > 0;
+
+  function commitDetail(field: string, oldVal: string, newVal: string) {
+    if (newVal === oldVal) return;
+    onDetailChange(record.id, field, oldVal, newVal);
+  }
 
   const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
 
@@ -157,6 +173,11 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
     const current = record.assignedTo ? record.assignedTo.split(', ').filter(Boolean) : [];
     return [...new Set([...seed, ...fromRecords, ...current])].sort();
   }, [allRecords, record.assignedTo]);
+
+  const payerOptions = useMemo(() => {
+    const fromRecords = allRecords.map((r) => r.payer.name).filter(Boolean);
+    return [...new Set([...PAYER_OPTIONS, ...fromRecords, record.payer.name].filter(Boolean))].sort();
+  }, [allRecords, record.payer.name]);
 
   useEffect(() => {
     if (portalOpen) {
@@ -228,13 +249,22 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
         <div className="flex items-center gap-3">
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded hover:bg-surface-variant transition-colors"
+              title="Close panel"
+            >
+              <PanelRightClose className="w-4 h-4 text-text-secondary" />
+            </button>
+          )}
           {tableCollapsed && (
             <button
               onClick={onExpandTable}
               className="p-1 rounded hover:bg-surface-variant transition-colors"
               title="Expand table"
             >
-              <PanelRightClose className="w-5 h-5 text-text-secondary" />
+              <PanelLeftOpen className="w-4 h-4 text-text-secondary" />
             </button>
           )}
           <h2 className="text-xl font-medium text-text-primary">
@@ -278,16 +308,6 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                 setCompletedAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
                 setScheduledAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
                 setPendingReassignments([]);
-
-                Object.entries(editFields).forEach(([field, value]) => {
-                  const rec = record as unknown as Record<string, unknown>;
-                  const originalValue = String(rec[field] ?? '');
-                  if (value !== originalValue) {
-                    onDetailChange(record.id, field, originalValue, value);
-                  }
-                });
-                setEditing(false);
-                setEditFields({});
               }
             }}
             className={`h-8 px-4 rounded-full text-sm font-medium transition-colors ${
@@ -327,9 +347,6 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
               <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT_COLORS[record.status] || 'bg-gray-400'}`} />
               <span className="text-sm text-text-primary">{record.status}</span>
             </div>
-            <span className="px-2 py-0.5 bg-primary/10 rounded-lg text-xs font-medium text-primary">
-              {record.state}
-            </span>
             {record.patient.mrn && (
               <div className="flex items-center gap-1">
                 <span className="text-xs text-text-primary">{record.patient.mrn}</span>
@@ -350,87 +367,57 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         <div className="px-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-medium text-text-primary">Authorization Information</span>
-            <button
-              onClick={() => {
-                if (editing) {
-                  Object.entries(editFields).forEach(([field, newVal]) => {
-                    let oldVal = '';
-                    switch (field) {
-                      case 'Authorization Number': oldVal = record.authNumber || '--'; break;
-                      case 'Payer': oldVal = record.payer.name; break;
-                      case 'Start Date': oldVal = formatAuthDate(record.startDate, '--'); break;
-                      case 'End Date': oldVal = formatAuthDate(record.endDate, '--'); break;
-                      case 'Assigned To': oldVal = record.assignedTo; break;
-                      case 'Provider': oldVal = record.provider; break;
-                      case 'Facility': oldVal = record.facility; break;
-                    }
-                    if (newVal !== oldVal) onDetailChange(record.id, field, oldVal, newVal);
-                  });
-                  setEditFields({});
-                } else {
-                  setEditFields({
-                    'Authorization Number': record.authNumber || '',
-                    'Payer': record.payer.name,
-                    'Start Date': record.startDate || '',
-                    'End Date': record.endDate || '',
-                    'Assigned To': record.assignedTo,
-                    'Provider': record.provider,
-                    'Facility': record.facility,
-                  });
-                }
-                setEditing((e) => !e);
-              }}
-              className="p-1 rounded-full hover:bg-surface-variant transition-colors"
-            >
-              {editing
-                ? <CheckCircle className="w-4 h-4 text-status-active" strokeWidth={1.5} />
-                : <Pencil className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />}
-            </button>
           </div>
 
           <div className="flex flex-col gap-1">
-            <EditableDetailRow editing={editing} label="Authorization Number" value={record.authNumber || '--'} editValue={editFields['Authorization Number']} onChange={(v) => setEditFields((p) => ({ ...p, 'Authorization Number': v }))} copyable={!!record.authNumber} />
-            <EditableDetailRow editing={editing} label="Payer" value={record.payer.name} editValue={editFields['Payer']} onChange={(v) => setEditFields((p) => ({ ...p, 'Payer': v }))} copyable />
+            <EditableDetailRow
+              label="Authorization Number"
+              value={record.authNumber || '--'}
+              onChange={(v) => commitDetail('Authorization Number', record.authNumber || '--', v)}
+              copyable={!!record.authNumber}
+            />
+            <EditableDetailRow
+              label="Payer"
+              value={record.payer.name}
+              onChange={(v) => commitDetail('Payer', record.payer.name, v)}
+              options={payerOptions}
+            />
             <DetailRow label="Payer ID" value={`${record.payer.name}IL: ${record.payer.planId}`} copyable />
             <EditableDetailRow
-              editing={editing}
               label="Start Date"
               value={formatAuthDate(record.startDate, '--')}
-              editValue={editFields['Start Date']}
-              onChange={(v) => {
-                if (editing) setEditFields((p) => ({ ...p, 'Start Date': v }));
-                else onDetailChange(record.id, 'Start Date', formatAuthDate(record.startDate, '--'), v);
-              }}
+              onChange={(v) => commitDetail('Start Date', formatAuthDate(record.startDate, '--'), v)}
               kind="date"
             />
             <EditableDetailRow
-              editing={editing}
               label="End Date"
               value={formatAuthDate(record.endDate, '--')}
-              editValue={editFields['End Date']}
-              onChange={(v) => {
-                if (editing) setEditFields((p) => ({ ...p, 'End Date': v }));
-                else onDetailChange(record.id, 'End Date', formatAuthDate(record.endDate, '--'), v);
-              }}
+              onChange={(v) => commitDetail('End Date', formatAuthDate(record.endDate, '--'), v)}
               kind="date"
             />
             {!record.orderBased && (
               <div className="flex items-center gap-2 py-0.5">
                 <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
-                <div className="inline-flex items-center p-0.5 rounded-lg bg-surface-variant">
-                  {(['Visits', 'CPTs'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTrackingType(t)}
-                      className={`px-2.5 h-6 rounded-md text-xs font-medium transition-colors ${
-                        trackingType === t
-                          ? 'bg-white text-primary shadow-sm'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2">
+                  {(['Visits', 'CPTs'] as const).map((t) => {
+                    const selected = trackingType === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTrackingType(t)}
+                        className={`inline-flex items-center rounded-md px-3 py-1 text-sm transition-colors ${
+                          selected
+                            ? t === 'Visits'
+                              ? 'bg-[#e6e9fb] text-accent-700'
+                              : 'bg-[#f3e6d4] text-text-primary'
+                            : 'bg-[#ececec] text-text-primary'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -468,7 +455,11 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
               </>
             ) : (
               <>
-                <DetailRow label="Visits Authorized" value={String(record.visitsAuthorized)} />
+                <EditableDetailRow
+                  label="Visits Authorized"
+                  value={String(record.visitsAuthorized)}
+                  onChange={(v) => commitDetail('Visits Authorized', String(record.visitsAuthorized), v)}
+                />
                 <DetailRow label="Visits Completed" value={String(record.visitsCompleted)} />
                 <DetailRow label="Scheduled Visits" value={String(record.visitsScheduled)} />
                 <DetailRow label="Remaining Visits" value={visitsRemaining > 0 ? `${visitsRemaining} (${unscheduled} unscheduled)` : '0'} />
@@ -483,6 +474,13 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                 )}
               </>
             )}
+            <div className="flex items-start gap-2 py-0.5">
+              <span className="w-[150px] shrink-0 pt-1.5 text-sm leading-[22px] text-accent-700">Auth Notes</span>
+              <AuthNotesField
+                value={record.authNotes ?? ''}
+                onChange={(value) => commitDetail('Auth Notes', record.authNotes ?? '', value)}
+              />
+            </div>
             <div className="flex items-start gap-2 py-1">
               <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
               <EditableSelect
@@ -494,9 +492,24 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                 options={AUTH_STATES}
               />
             </div>
-            <EditableDetailRow editing={editing} label="Assigned To" value={record.assignedTo} editValue={editFields['Assigned To']} onChange={(v) => setEditFields((p) => ({ ...p, 'Assigned To': v }))} options={assigneeOptions} />
-            <EditableDetailRow editing={editing} label="Provider" value={record.provider} editValue={editFields['Provider']} onChange={(v) => setEditFields((p) => ({ ...p, 'Provider': v }))} options={providerOptions} />
-            <EditableDetailRow editing={editing} label="Facility" value={record.facility} editValue={editFields['Facility']} onChange={(v) => setEditFields((p) => ({ ...p, 'Facility': v }))} options={facilityOptions} />
+            <EditableDetailRow
+              label="Assigned To"
+              value={record.assignedTo}
+              onChange={(v) => commitDetail('Assigned To', record.assignedTo, v)}
+              options={assigneeOptions}
+            />
+            <EditableDetailRow
+              label="Provider"
+              value={record.provider}
+              onChange={(v) => commitDetail('Provider', record.provider, v)}
+              options={providerOptions}
+            />
+            <EditableDetailRow
+              label="Facility"
+              value={record.facility}
+              onChange={(v) => commitDetail('Facility', record.facility, v)}
+              options={facilityOptions}
+            />
           </div>
         </div>
 
@@ -606,7 +619,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
         {/* Notes */}
         <div className="px-4">
           <div className="flex items-center gap-1.5 mb-2">
-            <p className="text-sm font-medium text-text-primary">Notes</p>
+            <p className="text-sm font-medium text-text-primary">Message</p>
             {record.notes.length > 0 && (
               <span className="text-xs text-text-secondary">({record.notes.length})</span>
             )}
@@ -627,7 +640,7 @@ export default function AuthDetailPanel({ record, allRecords, onReassignVisit, o
                     }
                   }
                 }}
-                placeholder="Add a note... type @ to tag a teammate"
+                placeholder="Send a message... type @ to tag a teammate"
                 rows={3}
                 className="w-full px-3 pt-2.5 text-xs text-text-primary bg-transparent resize-none focus:outline-none placeholder:text-text-secondary/70"
               />
@@ -2005,6 +2018,28 @@ function CptTrackingBlock({
   );
 }
 
+const DETAIL_CONTROL =
+  'min-h-[32px] rounded-md bg-[#f3f4f6] px-3 py-1.5 text-sm leading-[22px] text-text-primary outline-none transition-colors';
+
+function AuthNotesField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  return (
+    <textarea
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => onChange(draft)}
+      placeholder="Add notes"
+      rows={2}
+      className={`${DETAIL_CONTROL} min-w-0 flex-1 resize-none placeholder:text-text-secondary`}
+    />
+  );
+}
+
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
@@ -2098,42 +2133,48 @@ function AppointmentRow({ dateTime, authNumber, dateOptions, authOptions, onAuth
   );
 }
 
-function EditableDetailRow({ editing, label, value, editValue, onChange, copyable, options, kind }: {
-  editing: boolean;
+function EditableDetailRow({ label, value, onChange, options, kind }: {
   label: string;
   value: string;
-  editValue?: string;
   onChange: (v: string) => void;
   copyable?: boolean;
   options?: string[];
   kind?: 'text' | 'date';
 }) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
   if (kind === 'date') {
     return (
       <div className="flex items-center gap-2 py-0.5">
         <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
-        <DatePickerField value={editing ? (editValue ?? value) : value} onChange={onChange} />
+        <DatePickerField value={value} onChange={onChange} />
       </div>
     );
   }
-  if (editing) {
-    return (
-      <div className="flex items-center gap-2 py-0.5">
-        <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
-        {options ? (
-          <EditableSelect value={editValue ?? value} onChange={onChange} options={options} />
-        ) : (
-          <input
-            type="text"
-            value={editValue ?? value}
-            onChange={(e) => onChange(e.target.value)}
-            className="flex-1 min-w-0 text-sm leading-[22px] text-text-primary border border-outline rounded px-2 py-1 focus:outline-none focus:border-primary"
-          />
-        )}
-      </div>
-    );
-  }
-  return <DetailRow label={label} value={value} copyable={copyable} />;
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
+      {options ? (
+        <EditableSelect value={value} onChange={onChange} options={options} />
+      ) : (
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => onChange(draft)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          className={`${DETAIL_CONTROL} flex-1 min-w-0 placeholder:text-text-secondary`}
+        />
+      )}
+    </div>
+  );
 }
 
 function parseDisplayDate(value: string): Date | null {
@@ -2183,9 +2224,7 @@ function DatePickerField({ value, onChange }: { value: string; onChange: (value:
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className={`flex w-full items-center gap-2 rounded border bg-white px-2 py-1 text-left text-sm leading-[22px] transition-colors ${
-          open ? 'border-primary' : 'border-outline hover:border-primary/40'
-        }`}
+        className={`flex w-full items-center gap-2 ${DETAIL_CONTROL} text-left`}
       >
         <Calendar className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={1.5} />
         <span className={`min-w-0 flex-1 truncate ${display ? 'text-text-primary' : 'text-text-secondary'}`}>
@@ -2275,7 +2314,7 @@ function EditableSelect({ value, onChange, options }: { value: string; onChange:
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full flex items-center gap-1 text-sm leading-[22px] text-text-primary border rounded px-2 py-1 bg-white transition-colors ${open ? 'border-primary' : 'border-outline hover:border-primary/40'}`}
+        className={`flex w-full items-center gap-1 ${DETAIL_CONTROL}`}
       >
         <span className={`flex-1 truncate text-left ${value ? '' : 'text-text-secondary'}`}>
           {value || 'Select...'}

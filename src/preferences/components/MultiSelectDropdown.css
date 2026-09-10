@@ -1,0 +1,217 @@
+.multi-select-dropdown {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  z-index: 1;
+}
+
+.multi-select-input {
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+  cursor: pointer;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.multi-select-input:hover,
+.multi-select-input:focus-within {
+  border-color: #1132ee;
+}
+
+.multi-select-placeholder {
+  flex: 1;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #666666;
+}
+
+.multi-select-badges {
+  flex: 1 1 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+}
+
+.multi-select-badges::-webkit-scrollbar {
+  display: none;
+}
+
+.multi-select-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f2f2f2;
+  padding: 4.5px 8px 4.5px 14px;
+  border-radius: 100px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18.08px;
+  color: #1a1a1a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.multi-select-badge-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  transition: opacity 0.2s;
+}
+
+.multi-select-badge-remove:hover {
+  opacity: 0.7;
+}
+
+.multi-select-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #666666;
+}
+
+.multi-select-disabled .multi-select-input {
+  cursor: default;
+  pointer-events: none;
+  background-color: #f7f7f7;
+}
+
+.multi-select-disabled .multi-select-input:hover,
+.multi-select-disabled .multi-select-input:focus-within {
+  border-color: #e6e6e6;
+}
+
+.multi-select-disabled .multi-select-placeholder,
+.multi-select-disabled .multi-select-badge {
+  color: #b3b3b3;
+}
+
+.multi-select-disabled .multi-select-badge {
+  background-color: #f0f0f0;
+}
+
+.multi-select-disabled .multi-select-arrow {
+  color: #b3b3b3;
+}
+
+.multi-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.multi-select-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e6e6e6;
+  position: sticky;
+  top: 0;
+  background-color: #ffffff;
+  z-index: 1;
+}
+
+.multi-select-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #1a1a1a;
+  background: transparent;
+  min-width: 0;
+}
+
+.multi-select-search-input::placeholder {
+  color: #666666;
+}
+
+.multi-select-option-create {
+  color: #1132ee;
+  border-top: 1px solid #f0f0f0;
+}
+
+.multi-select-option-create:hover {
+  background-color: #f0f4ff;
+}
+
+.multi-select-option {
+  padding: 8px 12px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14.08px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.multi-select-option:hover {
+  background-color: #f7f7f7;
+}
+
+.multi-select-option.selected {
+  background-color: #f0f4ff;
+  color: #1132ee;
+}
+
+.multi-select-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid #c4c7cc;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.multi-select-checkbox.checked {
+  background-color: #1132ee;
+  border-color: #1132ee;
+}
+
+.multi-select-option-label {
+  flex: 1;
+}
+

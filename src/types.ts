@@ -54,6 +54,8 @@ export interface AuthRecord {
   assignedTo: string;
   tags: string[];
   notes: NoteEntry[];
+  /** Free-text notes captured on the authorization itself (create drawer + detail panel). */
+  authNotes?: string;
   timeline?: TimelineEntry[];
   confidence?: 'Confirmed' | 'Pending' | 'Unverified';
   /** Episode of care this authorization belongs to, used by Case grouping. */

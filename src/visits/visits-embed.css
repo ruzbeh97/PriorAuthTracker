@@ -1,0 +1,37 @@
+/* Overrides for running the appointment prototype inside the Air shell frame.
+   Its overlays were written against the viewport, so they are re-anchored to the
+   frame to keep the host sidebar and header usable. */
+
+.visits-embed {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+
+  /* Only the prototype's own toolbar sits above the drawer now. */
+  --drawer-top-clearance: 52px;
+}
+
+/* The hover popover portals to the document body, so it sits outside the frame
+   and has to restate the prototype's own type. */
+.appointment-popover {
+  color: var(--color-text);
+  font-family: var(--vn-font-sans);
+  font-size: 14px;
+}
+
+.visits-embed .scrim,
+.visits-embed .charge-overlay,
+.visits-embed .override-overlay,
+.visits-embed .prior-auth-overlay,
+.visits-embed .select-provider-overlay,
+.visits-embed .visit-limits-overlay,
+.visits-embed .send-text-overlay,
+.visits-embed .edit-appointment-overlay,
+.visits-embed .history-overlay,
+.visits-embed .upcoming-overlay,
+.visits-embed .drawer,
+.visits-embed .prototype-toast {
+  position: absolute;
+}

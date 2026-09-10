@@ -1,0 +1,1287 @@
+/* Actions first — matched to Figma type + layout tokens */
+
+.af-screen {
+  /* Color — sampled from Figma Ready / Status / Visits frames */
+  --af-blue: #1132ee; /* Figma primary fill */
+  --af-blue-soft: #eef0ff;
+  --af-text: #101828;
+  --af-muted: #667085;
+  --af-muted-soft: #98a2b3;
+  --af-icon: #454545;
+  --af-border: #d0d5dd;
+  --af-border-soft: #e4e7ec;
+  --af-surface: #f3f4f8; /* Ready / Scheduled tag fill */
+  --af-ready-fg: #393f4b; /* Ready for provider label */
+  --af-success: #2a8d62; /* Active / Paid / Linked / Completed */
+  --af-success-strong: #027a48;
+  --af-success-bg: #e8f4ec; /* Checked In / Linked fill */
+  --af-eligibility-active-bg: #d8e8e0; /* Active eligibility tag — Figma */
+  --af-warning: #b45f09; /* Figma yellow error */
+  --af-warning-bg: #fbf1e6; /* N Items Need Attention fill */
+  --af-warning-fg: #101828;
+  --af-danger: #bc473f; /* 3 Alerts / Missing */
+  --af-danger-bg: #f9e7e7;
+  --af-tag-primary-bg: #dce0f0; /* Primary / Secondary — Figma lavender */
+  --af-radius: 8px;
+
+  /* Product typescale aliases */
+  --af-font: var(--vn-font-sans);
+  --af-heading-s: var(--type-heading-4);
+  --af-label-l: var(--type-label-l);
+  --af-label-m: var(--type-label-m);
+  --af-label-s: var(--type-label-s);
+  --af-label-xs: 500 11px/1.6 var(--af-font);
+  --af-body-l: var(--type-body-l);
+  --af-body-m: var(--type-body-m);
+  --af-body-s: var(--type-body-s);
+  --af-supportive: var(--type-utility);
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  min-height: min-content;
+  height: auto;
+  overflow: visible;
+  color: var(--af-text);
+  font: var(--af-body-s);
+  font-family: var(--af-font);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 0;
+}
+
+.af-screen *,
+.af-screen *::before,
+.af-screen *::after {
+  box-sizing: border-box;
+}
+
+.af-screen button,
+.af-screen input,
+.af-screen select,
+.af-screen textarea {
+  font-family: var(--af-font);
+}
+
+.af-screen svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.33;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+/* Material Symbols — fg/secondary #454545 */
+.af-screen .material-symbols-rounded,
+.af-screen .af-mi {
+  font-family: "Material Symbols Rounded", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--af-icon);
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Header title + patient + primary actions */
+.af-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.af-top > .af-actions,
+.af-top > .af-attention {
+  margin-top: 0;
+  width: 100%;
+}
+
+.af-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 24px;
+  padding: 0;
+  border-bottom: none;
+}
+
+.af-header h2 {
+  margin: 0;
+  font: var(--af-heading-s);
+  color: var(--af-text);
+  letter-spacing: 0;
+}
+
+.af-patient {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* time → name; DOB block → follow-up block */
+  margin-bottom: 24px; /* provider → action buttons */
+}
+
+.af-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
+  margin-bottom: 0;
+}
+
+.af-topline-right {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Figma: 6px between icons + badges */
+  flex-shrink: 0;
+}
+
+.af-icon-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.af-time {
+  font: var(--af-body-s);
+  color: var(--af-text);
+  white-space: nowrap;
+}
+
+.af-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--af-icon);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.af-icon-btn:hover {
+  background: var(--af-surface);
+  color: var(--af-icon);
+}
+
+.af-icon-btn .af-mi {
+  font-size: 18px;
+  color: inherit;
+}
+
+.af-icon-btn.tight {
+  width: 24px;
+  height: 24px;
+}
+
+.af-icon-btn.inline {
+  width: 20px;
+  height: 20px;
+  margin-left: 0;
+}
+
+.af-more-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.af-more-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  width: 220px;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow: hidden;
+  border: 1px solid #e1e1e1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgb(16 24 40 / 12%);
+  font-family: var(--af-font);
+}
+
+.af-more-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  padding: 7px 16px;
+  border: 0;
+  color: #202124;
+  background: #ffffff;
+  cursor: pointer;
+  font: 400 15px/1.4 var(--af-font);
+  text-align: left;
+}
+
+.af-more-menu button:hover {
+  background: #f5f5f5;
+}
+
+.af-more-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: #e1e1e1;
+}
+
+.af-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Design System 3.0 Tag · size S — radius 8, not pill */
+.af-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--af-surface);
+  color: var(--af-ready-fg);
+  font: var(--af-label-s);
+  white-space: nowrap;
+}
+
+.af-badge.is-success {
+  background: var(--af-success-bg);
+  color: var(--af-success);
+}
+
+.af-badge.is-warning {
+  background: var(--af-warning-bg);
+  color: var(--af-warning);
+}
+
+.af-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* name → DOB */
+}
+
+.af-patient-name {
+  display: inline-flex;
+  align-items: baseline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: var(--af-heading-s);
+  cursor: pointer;
+  text-align: left;
+  width: fit-content;
+  letter-spacing: 0;
+}
+
+.af-patient-name-link {
+  color: var(--af-blue);
+}
+
+.af-patient-age {
+  color: var(--af-text);
+  font: var(--af-heading-s);
+  font-weight: 500; /* Figma label/M Medium — was Regular, looked too thin */
+}
+
+.af-patient-name:hover .af-patient-name-link {
+  text-decoration: underline;
+}
+
+.af-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px; /* follow-up → supervising provider */
+  margin-top: 0;
+}
+
+.af-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px; /* Figma auto-layout gap */
+  row-gap: 0;
+  margin: 0;
+  color: #344054;
+  font: var(--af-body-s);
+}
+
+/* Keep each segment whole so it wraps as a unit and the bullets stay on the line. */
+.af-meta-line > span {
+  white-space: nowrap;
+}
+
+/* Binds a value to its copy button so the icon never wraps away from the number. */
+.af-meta-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.af-meta-group > .af-icon-btn {
+  flex: none;
+}
+
+.af-numeric-meta {
+  font-family: var(--vn-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.af-sep {
+  margin: 0;
+  color: var(--af-muted);
+  flex: none;
+}
+
+.af-provider {
+  margin: 0;
+  color: var(--af-muted);
+  font: var(--af-body-s);
+  min-height: 21px;
+}
+
+.af-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.af-actions.nested {
+  margin-top: 0;
+}
+
+.af-btn-secondary,
+.af-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font: var(--af-label-s);
+  letter-spacing: 0;
+  cursor: pointer;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.af-btn-secondary {
+  background: #fff;
+  border-color: var(--af-blue);
+  color: var(--af-blue);
+}
+
+.af-btn-secondary:hover {
+  background: var(--af-blue-soft);
+}
+
+.af-btn-primary {
+  background: var(--af-blue);
+  border-color: var(--af-blue);
+  color: #fff;
+}
+
+.af-btn-primary:hover {
+  filter: brightness(0.96);
+}
+
+.af-attention {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f5f5f5;
+}
+
+.af-attention-heading {
+  display: flex;
+  align-items: center;
+  min-height: 21px;
+  gap: 4px; /* Figma auto layout gap */
+  padding-left: 2px;
+  color: #454545;
+  font: var(--af-label-s);
+}
+
+.af-attention-heading .af-mi {
+  display: grid;
+  width: 18px;
+  height: 21px;
+  place-items: center;
+  color: #d92d20 !important;
+  font-size: 18px;
+  line-height: 21px;
+}
+
+.af-ready-check-in .af-attention-heading .af-mi {
+  color: var(--af-success) !important;
+}
+
+.af-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.af-attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  flex-wrap: nowrap;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.af-attention-row:hover {
+  border-color: transparent;
+  background: #ececec;
+}
+
+.af-attention-row:focus-visible {
+  outline: none;
+}
+
+.af-attention-label {
+  font: var(--af-label-s); /* Figma label/S */
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #454545;
+}
+
+.af-status-visits {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  overflow: visible;
+}
+
+.af-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.af-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.af-section-title-row h3 {
+  margin: 0;
+  font: var(--af-label-m);
+  font-weight: 600; /* Status / Visits titles read SemiBold in design */
+  color: var(--af-text);
+}
+
+.af-section-sub {
+  margin: 0; /* Figma: Status → Last updated = 0 */
+  font: var(--af-supportive);
+  color: var(--af-muted);
+}
+
+.af-section-badge-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.af-section-badge-group .af-section-glyph {
+  font-size: 18px;
+  color: var(--af-muted);
+}
+
+.af-section-glyph-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--af-muted);
+}
+
+.af-section-glyph-btn:hover {
+  background: #f2f4f7;
+  color: var(--af-icon);
+}
+
+/* Same Design System Tag S as header tags (Ready / N items need attention) */
+.af-section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font: var(--af-label-s);
+  white-space: nowrap;
+  background: var(--af-surface);
+  color: var(--af-ready-fg);
+  flex-shrink: 0;
+}
+
+.af-section-badge.tone-attention,
+.af-section-badge.tone-warning {
+  background: var(--af-warning-bg);
+  color: var(--af-warning-fg);
+}
+
+.af-section-badge.tone-attention .af-mi,
+.af-section-badge.tone-warning .af-mi {
+  color: #d97706 !important;
+  font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+}
+
+.af-section-badge.tone-ready,
+.af-section-badge.tone-muted {
+  background: var(--af-surface);
+  color: var(--af-ready-fg);
+}
+
+.af-section-badge .af-mi {
+  font-size: 16px;
+}
+
+.af-form-row strong .af-mi {
+  font-size: 14px;
+}
+
+.af-form-row strong.tone-success .af-mi {
+  color: var(--af-success) !important;
+}
+
+.af-form-row strong.tone-danger .af-mi {
+  color: var(--af-danger) !important;
+}
+
+.af-form-row strong.tone-warning .af-mi {
+  color: var(--af-warning) !important;
+}
+
+.af-section-rule {
+  height: 1px;
+  width: 100%;
+  background: var(--af-border-soft);
+  margin: 0;
+  border: 0;
+  flex-shrink: 0;
+}
+
+.af-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Figma: between dropdown rows */
+  margin-top: 12px; /* Figma: Last updated → first row */
+  width: 100%;
+}
+
+.af-row {
+  width: 100%;
+  min-width: 0;
+  border-radius: 8px;
+  transition: outline-color 160ms ease, background-color 160ms ease;
+}
+
+.af-row.is-targeted {
+  outline: 0.5px solid #454545;
+  outline-offset: 4px;
+  background: transparent;
+}
+
+.af-screen button:focus,
+.af-screen button:focus-visible {
+  outline: none;
+}
+
+.af-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  padding: 0;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.af-row-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #344054; /* dropdown labels — charcoal, not muted grey */
+  font: var(--af-label-s); /* Figma label/S */
+  font-weight: 500;
+  letter-spacing: 0;
+  cursor: pointer;
+  text-align: left;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.af-row-toggle .af-mi {
+  font-size: 18px;
+  color: #98a2b3;
+  transition: transform 0.15s ease;
+}
+
+.af-row-toggle:hover .af-mi {
+  color: #667085;
+}
+
+.af-row.is-open .af-row-toggle .af-mi {
+  transform: rotate(180deg);
+}
+
+.af-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin-left: auto;
+  flex-shrink: 0;
+  min-height: 28px;
+}
+
+.af-row-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--af-label-s);
+  color: var(--af-muted);
+  white-space: nowrap;
+}
+
+.af-row-status.tone-success {
+  color: var(--af-success);
+}
+
+.af-row-status.tone-success .af-mi {
+  color: var(--af-success) !important;
+}
+
+.af-row-status.tone-warning {
+  color: var(--af-warning);
+}
+
+.af-row-status.tone-warning .af-mi {
+  color: var(--af-warning) !important;
+}
+
+.af-row-status.tone-danger {
+  color: var(--af-danger);
+}
+
+.af-row-status.tone-danger .af-mi {
+  color: var(--af-danger) !important;
+}
+
+.af-row-status.tone-muted {
+  color: var(--af-muted);
+}
+
+.af-row-status .af-mi {
+  font-size: 16px;
+}
+
+.af-row-meta {
+  font: var(--af-label-s);
+  color: var(--af-muted);
+  white-space: nowrap;
+}
+
+.af-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--af-danger);
+  flex-shrink: 0;
+}
+
+.af-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--af-icon);
+  font: var(--af-supportive);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.af-pill:hover {
+  background: var(--af-surface);
+}
+
+.af-pill .af-mi {
+  font-size: 14px;
+  color: var(--af-icon);
+}
+
+.af-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 8px;
+  width: 100%;
+  overflow: hidden;
+  animation: af-expand-in 240ms var(--ease-soft);
+}
+
+/* No fill mode: the row keeps its natural height once the reveal finishes, so
+   cards taller than the keyframe ceiling are never clipped. */
+@keyframes af-expand-in {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    max-height: 720px;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.af-card {
+  background: #f5f5f5;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: none;
+}
+
+.af-card-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.af-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.af-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #eaecf0;
+  color: #344054;
+  font: var(--af-label-xs);
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.af-tag .af-mi {
+  font-size: 14px;
+}
+
+.af-tag.tone-success {
+  background: var(--af-eligibility-active-bg);
+  color: var(--af-success);
+}
+
+.af-tag.tone-success .af-mi {
+  color: var(--af-success) !important;
+}
+
+.af-tag.tone-muted {
+  background: #e1e1e1; /* Figma Inconclusive fill */
+  color: #101828;
+  border-color: transparent;
+}
+
+.af-tag.tone-muted .af-mi {
+  color: #344054 !important;
+}
+
+/* Outstanding Balances — pale pink, dark label (not red text) */
+.af-tag.tone-balance {
+  background: var(--af-danger-bg);
+  color: #344054;
+}
+
+/* Primary / Secondary — pale lavender, dark label */
+.af-tag.priority-primary,
+.af-tag.priority-secondary {
+  background: var(--af-tag-primary-bg);
+  color: #344054;
+}
+
+.af-card-icons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.af-card-icons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--af-icon);
+  cursor: pointer;
+}
+
+.af-card-icons button:hover {
+  background: #e4e7ec;
+  color: var(--af-icon);
+}
+
+.af-card-icons button .af-mi {
+  font-size: 18px;
+  color: var(--af-icon);
+}
+
+.af-card-icons button.is-assist {
+  color: #6172f3;
+}
+
+.af-card-icons button.is-assist .af-mi {
+  color: #6172f3;
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 20;
+}
+
+.af-card-divider {
+  height: 1px;
+  background: #e4e7ec;
+  margin: 12px 0;
+}
+
+.af-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.af-kv-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.af-kv-list span {
+  color: #666666;
+  font: var(--af-label-s); /* Figma label/S */
+  font-weight: 500;
+  letter-spacing: 0;
+  flex-shrink: 0;
+}
+
+.af-kv-list strong {
+  color: #101828;
+  font: var(--af-body-s);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.af-kv-list strong.is-link {
+  color: var(--af-blue);
+  font-weight: 500;
+}
+
+/* Appointment Notes: Patient Notes label matches Type / ICD-10 label styling */
+.af-notes-card .af-kv-list {
+  gap: 10px;
+}
+
+.af-notes-block {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.af-notes-heading {
+  margin: 0;
+  color: #666666;
+  font: var(--af-label-s);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.af-notes-body {
+  margin: 0;
+  color: #101828;
+  font: var(--af-body-s);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* Progress Note Alerts expanded card */
+.af-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.af-alert-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #e8720c;
+  border-radius: 0 6px 6px 0;
+  background: #f7e8d7;
+}
+
+.af-alert-icon {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid #eda135;
+  border-radius: 50%;
+  color: #eda135;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: var(--af-font);
+}
+
+.af-alert-copy {
+  margin: 0;
+  color: #101828;
+  font: var(--af-body-s);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.af-alert-copy strong {
+  font-weight: 500;
+}
+
+/* Info affordance next to a metric label. */
+.af-screen .af-mi.af-info-glyph {
+  flex: none;
+  margin-left: 7px;
+  color: #454545;
+  font-size: 15px;
+  font-variation-settings: "FILL" 0, "wght" 450, "GRAD" 0, "opsz" 20;
+}
+
+.af-kv-info span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.af-visit-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.af-visit-topline {
+  display: flex;
+  min-height: 26px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.af-visit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.af-visit-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: #101828;
+  font: 500 12px/1 var(--af-font);
+  font-weight: 500;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.af-visit-chip.tone-info {
+  background: var(--af-tag-primary-bg);
+}
+
+.af-visit-chip.tone-muted {
+  background: #e4e4e7;
+}
+
+.af-visit-headline {
+  margin: 0;
+  color: #101828;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.af-visit-subline {
+  margin: 5px 0 0;
+  color: #667085;
+  font: 400 12px/18px var(--af-font);
+  font-weight: 400;
+}
+
+.af-visit-period {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 7px;
+}
+
+.af-visit-period span {
+  display: inline-flex;
+  align-items: center;
+  color: #5e5e5e;
+  font: var(--af-body-s);
+}
+
+.af-visit-period strong {
+  color: #131313;
+  font: var(--af-label-s);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.af-meter {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid #d9deea;
+  border-radius: 999px;
+  background: #ffffff;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 72%);
+}
+
+.af-meter-fill {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 1px;
+  border-radius: 999px;
+  animation: af-meter-grow 520ms var(--ease-soft) both;
+}
+
+/* Wipe the bands in from the left instead of scaling, which would warp the caps. */
+@keyframes af-meter-grow {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.af-meter-fill.swatch-green {
+  background: #18a957;
+}
+
+.af-meter-fill.swatch-blue {
+  background: #2f6bea;
+}
+
+.af-meter-fill.swatch-pale {
+  background: #e8eefc;
+}
+
+.af-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.af-legend-row {
+  display: flex;
+  min-height: 22px;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Figma: legend label is body/S 13/160 on Text/OnNeutralSurface secondary. */
+.af-legend-label {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  color: #5e5e5e;
+  font: var(--af-body-s);
+}
+
+.af-legend-row strong {
+  color: #131313;
+  font: var(--af-label-s);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.af-swatch {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 4px;
+}
+
+.af-swatch.swatch-green {
+  background: #18a957;
+}
+
+.af-swatch.swatch-blue {
+  background: #2f6bea;
+}
+
+.af-swatch.swatch-pale {
+  background: #e8eefc;
+}
+
+.af-swatch.swatch-empty {
+  background: #ffffff;
+  border: 1px solid #e1e4ea;
+}
+
+.af-form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.af-form-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.af-form-row span {
+  color: #666666;
+  font: var(--af-label-s); /* Figma label/S */
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.af-form-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--af-label-s);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.af-form-row strong svg {
+  width: 12px;
+  height: 12px;
+}
+
+.af-form-x {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.af-form-row strong.tone-success {
+  color: var(--af-success);
+}
+
+.af-form-row strong.tone-success svg {
+  stroke: var(--af-success);
+}
+
+.af-form-row strong.tone-danger {
+  color: var(--af-danger);
+}
+
+.af-form-row strong.tone-danger svg {
+  stroke: var(--af-danger);
+}
+
+.af-form-row strong.tone-warning {
+  color: var(--af-warning);
+}

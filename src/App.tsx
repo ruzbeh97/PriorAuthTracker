@@ -17,7 +17,6 @@ import type { CreateAuthForm, OpenCreateAuthDetail } from './components/CreateAu
 import AuthDetailPanel from './components/AuthDetailPanel';
 import PriorAuthTracker2 from './components/PriorAuthTracker2';
 import TasksPage from './components/TasksPage';
-import PreferencesPage from './components/PreferencesPage';
 import { mockAuthRecords } from './data';
 import type { AuthRecord, AuthState, TimelineEntry } from './types';
 import { migrateAuthState } from './types';
@@ -33,8 +32,16 @@ const OrdersPage = lazy(async () => {
   return { default: Page };
 });
 
+// Snapshot of the appointment-detail prototype, embedded in the Visits frame.
+const VisitsPage = lazy(() => import('./visits/VisitsPage'));
+
+// Snapshot of the charge-capture prototype's preferences area.
+const PreferencesPage = lazy(() => import('./preferences/PreferencesPage'));
+
 const ORDER_AUTHORIZATIONS_EVENT = 'patient-chart:order-authorizations';
+const ORDER_AUTH_STATE_EVENT = 'patient-chart:order-auth-state';
 const ORDER_AUTH_STORAGE_KEY = 'prior-auth:order-records';
+const NOTE_ORDERS_STORAGE_KEY = 'patient-chart:note-orders';
 
 // No backend in the prototype, so order-driven rows persist across refreshes locally.
 function loadStoredOrderAuthRecords(): AuthRecord[] {
@@ -47,6 +54,57 @@ function loadStoredOrderAuthRecords(): AuthRecord[] {
   } catch {
     return [];
   }
+}
+
+function patchNoteOrders(
+  orderIds: string[],
+  patch: {
+    status?: AuthState;
+    insurance?: string;
+    authNumber?: string;
+    startDate?: string;
+    endDate?: string;
+    authNotes?: string;
+  },
+) {
+  try {
+    const raw = window.localStorage.getItem(NOTE_ORDERS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(parsed)) return;
+    const ids = new Set(orderIds);
+    const next = parsed.map((order: { id?: string }) =>
+      order.id && ids.has(order.id) ? { ...order, ...patch } : order,
+    );
+    window.localStorage.setItem(NOTE_ORDERS_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Storage can be unavailable in private browsing; the live event still updates an open note.
+  }
+}
+
+function publishOrderAuthState(record: AuthRecord) {
+  const orderIds = (record.orderCpts ?? []).map((order) => order.orderId).filter(Boolean);
+  if (orderIds.length === 0) return;
+  patchNoteOrders(orderIds, {
+    status: record.state,
+    insurance: record.payer.name,
+    authNumber: record.authNumber,
+    startDate: record.startDate,
+    endDate: record.endDate,
+    authNotes: record.authNotes ?? '',
+  });
+  window.dispatchEvent(
+    new CustomEvent(ORDER_AUTH_STATE_EVENT, {
+      detail: {
+        orderIds,
+        state: record.state,
+        insurance: record.payer.name,
+        authNumber: record.authNumber,
+        startDate: record.startDate,
+        endDate: record.endDate,
+        authNotes: record.authNotes ?? '',
+      },
+    }),
+  );
 }
 
 type OrderAuthorizationEventDetail = {
@@ -62,6 +120,10 @@ type OrderAuthorizationEventDetail = {
     provider: string;
     caseName?: string;
     assignedTo?: string;
+    authNumber?: string;
+    startDate?: string;
+    endDate?: string;
+    authNotes?: string;
     orders: Array<{
       id: string;
       title: string;
@@ -103,37 +165,52 @@ export default function App() {
     record: Pick<AuthRecord, 'id' | 'patient' | 'authNumber'>,
     previousAssignedTo: string,
     nextAssignedTo: string,
+    taskName?: string,
   ) => {
-    const created = tasksFromAuthAssignment(record, previousAssignedTo, nextAssignedTo);
+    const created = tasksFromAuthAssignment(record, previousAssignedTo, nextAssignedTo, taskName);
     if (created.length === 0) return;
     setTasks((current) => [...created, ...current]);
+  }, []);
+
+  const handleOrderAuthRecordUpdate = useCallback((record: AuthRecord) => {
+    if (!record.orderSource) return;
+    setOrderAuthRecords((current) =>
+      current.map((entry) => (entry.id === record.id ? { ...entry, ...record } : entry)),
+    );
+    publishOrderAuthState(record);
   }, []);
 
   useEffect(() => {
     function syncOrderAuthorizations(event: Event) {
       const { groups, source = 'visit-note' } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
-      const sourceRecords: AuthRecord[] = groups.map((group) => ({
-          id: `order-auth-${source}-${group.id}`,
+      const previousRecords = orderAuthRecordsRef.current;
+      const sourceRecords: AuthRecord[] = groups.map((group) => {
+        const id = `order-auth-${source}-${group.id}`;
+        const previous = previousRecords.find((entry) => entry.id === id);
+        return {
+          id,
           patient: {
             name: group.patient.name,
             dob: group.patient.dob,
             mrn: group.patient.mrn,
           },
-          authNumber: '',
-          payer: { name: group.patient.insurance, planId: '' },
-          startDate: '',
-          endDate: '',
-          visitsAuthorized: 0,
-          visitsCompleted: 0,
-          visitsScheduled: 0,
-          state: 'Needs Authorization',
-          status: 'Needs Auth',
-          facility: 'MAIN OFFICE',
+          authNumber: group.authNumber || previous?.authNumber || '',
+          payer: { name: group.patient.insurance, planId: previous?.payer.planId ?? '' },
+          startDate: group.startDate || previous?.startDate || '',
+          endDate: group.endDate || previous?.endDate || '',
+          visitsAuthorized: previous?.visitsAuthorized ?? 0,
+          visitsCompleted: previous?.visitsCompleted ?? 0,
+          visitsScheduled: previous?.visitsScheduled ?? 0,
+          state: previous?.state ?? 'Needs Authorization',
+          status: previous?.status ?? 'Needs Auth',
+          facility: previous?.facility ?? 'MAIN OFFICE',
           provider: group.provider,
           caseName: group.caseName,
-          assignedTo: group.assignedTo?.trim() || 'Unassigned',
-          tags: ['ORDER AUTHORIZATION'],
-          notes: [],
+          assignedTo: group.assignedTo?.trim() || previous?.assignedTo || 'Unassigned',
+          tags: previous?.tags?.length ? previous.tags : ['ORDER AUTHORIZATION'],
+          notes: previous?.notes ?? [],
+          timeline: previous?.timeline,
+          authNotes: group.authNotes || previous?.authNotes,
           orderBased: true,
           orderSource: source,
           orderGroupId: group.id,
@@ -145,8 +222,8 @@ export default function App() {
             units: order.units,
             details: order.details,
           })),
-        }));
-      const previousRecords = orderAuthRecordsRef.current;
+        };
+      });
       for (const record of sourceRecords) {
         const previous = previousRecords.find((entry) => entry.id === record.id);
         addAuthAssignmentTasks(record, previous?.assignedTo ?? 'Unassigned', record.assignedTo);
@@ -415,6 +492,8 @@ export default function App() {
           case 'End Date': updated.endDate = to; break;
           case 'Payer': updated.payer = { ...r.payer, name: to }; break;
           case 'State': updated.state = migrateAuthState(to); break;
+          case 'Visits Authorized': updated.visitsAuthorized = parseInt(to, 10) || 0; break;
+          case 'Auth Notes': updated.authNotes = to; break;
         }
         return updated;
       })
@@ -463,14 +542,37 @@ export default function App() {
                 <OrdersPage siteWide />
               </main>
             </Suspense>
+          ) : activePage === 'Visits' ? (
+            <Suspense
+              fallback={
+                <main className="flex flex-1 min-w-0 min-h-0 items-center justify-center bg-white border border-black/10 rounded-lg">
+                  <p className="text-[13px] text-shell-fg-subtle">Loading visits…</p>
+                </main>
+              }
+            >
+              <main className="flex flex-1 min-w-0 min-h-0 overflow-hidden rounded-lg border border-black/10 bg-white">
+                <VisitsPage />
+              </main>
+            </Suspense>
           ) : activePage === 'Tasks' ? (
             <TasksPage tasks={tasks} onTasksChange={setTasks} />
           ) : activePage === 'Preferences' ? (
-            <PreferencesPage />
+            <Suspense
+              fallback={
+                <main className="flex flex-1 min-w-0 min-h-0 items-center justify-center bg-white border border-black/10 rounded-lg">
+                  <p className="text-[13px] text-shell-fg-subtle">Loading preferences…</p>
+                </main>
+              }
+            >
+              <main className="flex flex-1 min-w-0 min-h-0 overflow-hidden rounded-lg border border-black/10 bg-white">
+                <PreferencesPage />
+              </main>
+            </Suspense>
           ) : activePage === 'Prior Auth Tracker 2' ? (
             <PriorAuthTracker2
               orderAuthRecords={orderAuthRecords}
               onAuthorizationAssigned={addAuthAssignmentTasks}
+              onOrderAuthRecordUpdate={handleOrderAuthRecordUpdate}
               onSelectedRecordChange={handleSelectedRecordChange}
               registerNavigate={handleRegisterNavigate}
               registerClearSelection={handleRegisterClearSelection}

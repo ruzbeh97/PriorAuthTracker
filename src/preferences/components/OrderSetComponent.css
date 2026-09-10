@@ -1,0 +1,1099 @@
+.order-set-component {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.order-set-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.order-set-title {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #000000;
+  margin: 0;
+}
+
+.order-set-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-set-delete-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+  transition: background-color 0.2s;
+}
+
+.order-set-delete-button:hover {
+  background-color: #f0f0f0;
+}
+
+.order-set-delete-button:active {
+  background-color: #e6e6e6;
+}
+
+/* ── Add Order button + menu ── */
+.order-set-add-wrapper {
+  position: relative;
+  z-index: 30;
+}
+
+.order-set-add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 3px 14px;
+  background-color: rgba(255, 255, 255, 0);
+  border: 1px solid #1132ee;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #1132ee;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-set-add-button:hover {
+  background-color: #f0f4ff;
+}
+
+/* ── Order Set Browser (matches Figma "Order Set Browser" component) ── */
+.order-set-browser {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  width: 480px;
+  max-width: calc(100vw - 48px);
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  box-shadow: 0px 2px 20px 1px rgba(0, 0, 0, 0.1), 0px 4px 10px 0px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.order-set-browser-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 140px;
+  flex-shrink: 0;
+  background-color: #f7f7f7;
+  border-right: 1px solid #e6e6e6;
+  padding: 12px 8px;
+}
+
+.order-set-nav-tab {
+  width: 100%;
+  height: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-set-nav-tab:hover {
+  background-color: #efefef;
+}
+
+.order-set-nav-tab.active {
+  background-color: #e6e6e6;
+}
+
+.order-set-browser-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.order-set-browser-search {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e6e6e6;
+  padding: 8px 16px;
+}
+
+.order-set-browser-search-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  padding: 4px 0;
+}
+
+.order-set-browser-search-input::placeholder {
+  color: #808080;
+}
+
+.order-set-browser-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.order-set-browser-section-header {
+  padding: 8px 16px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.order-set-browser-section-header-blue {
+  background-color: #f1f3fe;
+}
+
+.order-set-browser-section-header-yellow {
+  background-color: #fffdf0;
+}
+
+.order-set-browser-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e6e6e6;
+  cursor: pointer;
+  background-color: #ffffff;
+  transition: background-color 0.15s;
+}
+
+.order-set-browser-row:hover {
+  background-color: #f7f7f7;
+}
+
+.order-set-browser-row.selected {
+  background-color: #f0f4ff;
+}
+
+.order-set-browser-row.selected:hover {
+  background-color: #e6ecff;
+}
+
+.order-set-browser-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  width: 100%;
+}
+
+.order-set-browser-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.order-set-browser-star {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.order-set-browser-star:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.order-set-browser-row-title {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #000000;
+}
+
+.order-set-browser-row.selected .order-set-browser-row-title {
+  color: #1132ee;
+}
+
+.order-set-browser-row-subtitle {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666666;
+}
+
+.order-set-browser-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #9ca3af;
+}
+
+.order-set-empty {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #9ca3af;
+}
+
+.order-set-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.order-set-content .dropdown-input {
+  height: 45px;
+  padding: 6px 8px 6px 12px;
+}
+
+/* ── Order breakdown ── */
+.order-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.order-set-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+/* Block header: order set name + link icon + remove button (or plain "Individual Orders" label) */
+.order-set-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  width: 100%;
+}
+
+.order-set-block-header-plain {
+  margin-top: 8px;
+}
+
+.order-set-block-title {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #1a1a1a;
+}
+
+.order-set-block-rows {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.order-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+
+.order-row:hover {
+  background-color: #fafafa;
+}
+
+.order-row-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 70%;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-row-chevron,
+.order-row-delete {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+  transition: background-color 0.15s;
+}
+
+.order-row-delete {
+  margin-left: auto;
+}
+
+.order-row-chevron:hover,
+.order-row-delete:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.order-row-chevron svg {
+  transition: transform 0.15s;
+}
+
+.order-row-chevron.expanded svg {
+  transform: rotate(180deg);
+}
+
+/* Small round icon buttons shared by Modifiers (add/remove) and other +/- controls */
+.obr-action {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50px;
+  transition: background-color 0.15s;
+}
+
+.obr-action:hover:not(:disabled) {
+  background-color: #f0f0f0;
+}
+
+.obr-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Order detail panel (Injection / Referral / Medication / Imaging / Lab / DME forms) ── */
+.odf {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 4px 16px 28px;
+}
+
+.odf-readonly {
+  pointer-events: none;
+}
+
+.odf-readonly .odf-label {
+  color: #808080;
+}
+
+.odf-readonly .odf-date-input,
+.odf-readonly .odf-text-input,
+.odf-readonly .odf-dispense-input,
+.odf-readonly .odf-notes-textarea,
+.odf-readonly .odf-sig-textarea {
+  color: #666666;
+  background-color: #f7f7f7;
+  cursor: default;
+}
+
+.odf-readonly .odf-chip {
+  padding-right: 10px;
+}
+
+.odf-readonly .odf-segmented-option:not(.selected) {
+  opacity: 0.45;
+}
+
+.odf-readonly .odf-additional-toggle:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.odf-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
+  width: 100%;
+}
+
+.odf-row-start {
+  align-items: flex-start;
+  padding-top: 6px;
+}
+
+.odf-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1132ee;
+}
+
+.odf-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.odf-divider {
+  width: 100%;
+  padding-top: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.odf-divider-label {
+  display: inline-block;
+  padding-bottom: 8px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #808080;
+}
+
+.odf-address {
+  padding: 2px 0 8px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #808080;
+}
+
+.odf-facility-dropdown {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.odf-send-to {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Checkbox */
+.odf-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.odf-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1.5px solid #c4c7cc;
+  border-radius: 4px;
+  background-color: #ffffff;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.odf-checkbox.checked {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+.odf-checkbox-label {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #374151;
+  cursor: pointer;
+}
+
+/* Date / time / text inputs */
+.odf-date-input,
+.odf-text-input {
+  height: 36px;
+  width: 180px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.odf-text-input {
+  width: 100%;
+  max-width: 360px;
+}
+
+.odf-date-input:focus,
+.odf-text-input:focus {
+  border-color: #1132ee;
+}
+
+/* Dispense: Units / Quantity + Refills */
+.odf-dispense {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.odf-dispense-label {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #6b7280;
+}
+
+.odf-dispense-input {
+  height: 32px;
+  width: 64px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #1a1a1a;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.odf-dispense-input:focus {
+  border-color: #1132ee;
+}
+
+.odf-dispense-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #e6e6e6;
+}
+
+/* Modifiers */
+.odf-modifiers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.odf-modifier-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.odf-modifier-dropdown {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.odf-modifier-dropdown .dropdown-input {
+  height: 36px;
+  padding: 6px 6px 6px 10px;
+}
+
+/* Notes */
+.odf-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.odf-notes-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.odf-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  background-color: #f7f7f7;
+  border: none;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.odf-pill-btn:hover,
+.odf-pill-btn.active {
+  background-color: #efefef;
+}
+
+.odf-pill-plus {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.odf-notes-textarea {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #1a1a1a;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.odf-notes-textarea:focus {
+  border-color: #1132ee;
+}
+
+/* Attachments */
+.odf-attachments-select {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.odf-row-toggle {
+  min-height: 28px;
+}
+
+.odf-pdf-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.odf-toggle {
+  width: 34px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50px;
+  border: none;
+  background-color: #d1d5db;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.15s;
+}
+
+.odf-toggle.on {
+  background-color: #1132ee;
+  justify-content: flex-end;
+}
+
+.odf-toggle-knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.odf-pdf-toggle-label {
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.odf-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  color: #6b7280;
+  box-sizing: border-box;
+}
+
+.odf-browse-link {
+  color: #1132ee;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Diagnosis Code chips */
+.odf-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.odf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 6px 0 12px;
+  background-color: #f0f0f0;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+
+.odf-chip-remove {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  border-radius: 50%;
+  transition: background-color 0.15s;
+}
+
+.odf-chip-remove:hover {
+  background-color: #e0e0e0;
+}
+
+.odf-chip-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  background: none;
+  border: 1px dashed #c4c7cc;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1132ee;
+  cursor: pointer;
+}
+
+.odf-chip-add-plus {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.odf-chip-add-dropdown {
+  position: relative;
+  width: 260px;
+  z-index: 1;
+}
+
+.odf-chip-add-dropdown:has(.searchable-dropdown-menu) {
+  z-index: 10;
+}
+
+/* Recipients */
+.odf-recipient-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.odf-recipient-name {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #1a1a1a;
+}
+
+.odf-recipient-checks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+/* SIG */
+.odf-sig {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.odf-sig-textarea {
+  width: 100%;
+  min-height: 84px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13.5px;
+  color: #1a1a1a;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.odf-sig-textarea:focus {
+  border-color: #1132ee;
+}
+
+.odf-sig-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.odf-sig-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.odf-sig-chip:hover {
+  background-color: #f7f7f7;
+}
+
+.odf-sig-chip-smart {
+  background-color: #f1edfe;
+  border-color: #ded4fb;
+  color: #6d28d9;
+}
+
+.odf-sig-chip-sparkle {
+  font-size: 12px;
+}
+
+.odf-sig-validate {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1132ee;
+  cursor: pointer;
+}
+
+/* Result Medium segmented control (Imaging) */
+.odf-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.odf-segmented-option {
+  height: 30px;
+  padding: 0 12px;
+  background-color: #f7f7f7;
+  border: none;
+  border-radius: 50px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.odf-segmented-option:hover {
+  background-color: #efefef;
+}
+
+.odf-segmented-option.selected {
+  background-color: #f0f4ff;
+  color: #1132ee;
+}
+
+/* Specimen Collected nested fields (Lab) */
+.odf-specimen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.odf-specimen-nested {
+  display: flex;
+  flex-direction: column;
+  padding-left: 16px;
+  border-left: 2px solid #f0f0f0;
+  margin-top: 4px;
+}
+
+/* Additional Fields collapsible section */
+.odf-additional {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: 8px;
+}
+
+.odf-additional-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #808080;
+  cursor: pointer;
+}
+
+.odf-additional-chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 0.15s;
+}
+
+.odf-additional-chevron.collapsed {
+  transform: rotate(180deg);
+}
+
+.odf-additional-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+}
+
+.odf-procedure-dropdown {
+  width: 100%;
+  max-width: 520px;
+}
+
+.odf-text-input-bare {
+  border: none;
+  background: transparent;
+  padding-left: 0;
+}
+
+.odf-text-input-bare:focus {
+  border: none;
+  box-shadow: none;
+}
+
+.odf-auth-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.odf-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.odf-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #303030;
+}
+
+.odf-radio input {
+  accent-color: #1132ee;
+}
+
+.odf-muted {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.odf-procedure-gap {
+  height: 24px;
+}
+
+.odf-procedure-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.odf-complete-send {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1132ee;
+  cursor: pointer;
+}
+
+.odf-complete-send:hover {
+  text-decoration: underline;
+}

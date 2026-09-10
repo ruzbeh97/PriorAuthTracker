@@ -1,0 +1,474 @@
+/* Prototype chrome + drawer overlay on top of shell.css */
+
+:root {
+  /* Figma TOP ACTIONS: drawer W 466 on 1728 frame */
+  --drawer-width: 466px;
+  --drawer-inset: 16px;
+  --drawer-radius: 8px;
+
+  /* Distance from the viewport top to the drawer, per Figma. Clears the product
+     bar and calendar toolbar so their controls stay reachable. */
+  --drawer-top-clearance: 81px;
+
+  /* Shared motion: soft settle rather than linear slide. */
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-scrim: 200ms;
+  --dur-panel: 300ms;
+  --dur-drawer: 320ms;
+  --dur-micro: 140ms;
+  --vn-surface: #ffffff;
+  --color-text: #1f2937;
+  --color-text-muted: #667085;
+  --color-border: #e4e7ec;
+  --vn-primary: #155eef;
+  --color-success: #039855;
+  --color-warning: #b45f09;
+  --color-danger: #d92d20;
+}
+
+/* Match the Rounded icon set: no square stroke ends anywhere. */
+.visits-embed svg,
+.appointment-popover svg {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The drawer floats over the calendar rather than filling the edge, so the
+   backdrop is dimmed hard enough for the panel to read as the focused surface. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(16 24 40 / 48%);
+  animation: drawer-scrim-in 220ms ease both;
+}
+
+.drawer {
+  position: fixed;
+  top: var(--drawer-top-clearance);
+  bottom: var(--drawer-inset);
+  right: var(--drawer-inset);
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100vw - (var(--drawer-inset) * 2)), var(--drawer-width));
+  height: auto;
+  overflow: hidden;
+  background: var(--vn-surface);
+  border-radius: var(--drawer-radius);
+  box-shadow:
+    0 0 0 1px rgb(16 24 40 / 4%),
+    0 24px 56px -16px rgb(16 24 40 / 22%);
+  transform-origin: center right;
+  animation: drawer-float-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.drawer-content {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0;
+  border-radius: inherit;
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes drawer-scrim-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drawer-float-in {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--drawer-width) * 0.28), 0, 0) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+.design-placeholder {
+  padding: 28px 24px;
+}
+
+.design-placeholder-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.design-placeholder p {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.design-placeholder-meta {
+  color: var(--color-text) !important;
+  font-weight: 500;
+}
+
+.prototype-corner-toggle {
+  display: none;
+}
+
+/* Prototype-only control: stays in the product bar, above the drawer scrim. */
+.prototype-controls {
+  position: relative;
+  z-index: 60;
+  flex: none;
+}
+
+/* With the drawer up the tab must dim with the rest of the shell instead of
+   punching a bright hole through the scrim, so it drops back below it. */
+.prototype-root.is-drawer-open .prototype-controls {
+  z-index: auto;
+}
+
+.prototype-tab {
+  display: inline-flex;
+  width: auto;
+  height: 30px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  color: #344054;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 6%);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.prototype-tab:hover {
+  background: #f9fafb;
+}
+
+.prototype-tab.is-open {
+  color: #101828;
+  border-color: #98a2b3;
+  background: #ffffff;
+}
+
+.prototype-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  width: min(390px, calc(100vw - 24px));
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgb(16 24 40 / 14%);
+}
+
+.prototype-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #101828;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.prototype-panel-close {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: #98a2b3;
+  background: transparent;
+  cursor: pointer;
+}
+
+.prototype-panel-close:hover {
+  color: #344054;
+  background: #f2f4f7;
+}
+
+.prototype-panel-close svg {
+  width: 12px;
+  height: 12px;
+}
+
+.prototype-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prototype-panel-label {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.prototype-field-value {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.prototype-field-value.is-muted {
+  color: #98a2b3;
+  font-weight: 400;
+}
+
+.prototype-choice-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.prototype-choice-row button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #667085;
+  background: #f2f4f7;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.prototype-choice-row button:hover {
+  background: #e4e7ec;
+}
+
+.prototype-choice-row button.is-selected {
+  color: #101828;
+  border-color: #d0d5dd;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 6%);
+  font-weight: 600;
+}
+
+.prototype-toast {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: 24px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: #ffffff;
+  background: #101828;
+  box-shadow: 0 8px 20px rgb(16 24 40 / 18%);
+  transform: translateX(-50%);
+  font-size: 13px;
+}
+
+.prototype-toast {
+  animation: toast-rise-in 220ms var(--ease-soft) both;
+}
+
+/* ---------------------------------------------------------------------------
+   Shared motion system
+   Every overlay fades its backdrop, centred panels settle upward, and side
+   surfaces glide in from the right. Keeps openings feeling light rather than
+   snapping into place.
+   --------------------------------------------------------------------------- */
+
+.charge-overlay,
+.override-overlay,
+.prior-auth-overlay,
+.select-provider-overlay,
+.visit-limits-overlay,
+.edit-appointment-overlay,
+.send-text-overlay,
+.upcoming-overlay,
+.history-overlay {
+  animation: drawer-scrim-in var(--dur-scrim) ease both;
+}
+
+.charge-modal,
+.prior-auth-modal,
+.select-provider-modal,
+.visit-limits-modal,
+.send-text-modal,
+.upcoming-popover {
+  animation: panel-settle-in var(--dur-panel) var(--ease-soft) both;
+}
+
+.override-drawer,
+.edit-appointment-drawer,
+.history-drawer {
+  transform-origin: center right;
+  animation: panel-glide-in var(--dur-drawer) var(--ease-soft) both;
+}
+
+.appointment-popover {
+  animation: panel-settle-in 160ms var(--ease-soft) both;
+}
+
+/* Grows out of its trigger rather than the panel's own centre. */
+.prototype-panel {
+  transform-origin: top left;
+  animation: panel-settle-in 180ms var(--ease-soft) both;
+}
+
+.prototype-panel.is-closing {
+  pointer-events: none;
+  animation: panel-settle-out 140ms ease both;
+}
+
+@keyframes panel-settle-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.985);
+  }
+}
+
+@keyframes panel-settle-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes panel-glide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(40px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+/* Micro-interactions: hovers and presses ease instead of jumping. */
+.visits-embed :is(button, a, summary, [role="button"]),
+.appointment-popover :is(button, a, summary, [role="button"]) {
+  transition:
+    background-color var(--dur-micro) ease,
+    border-color var(--dur-micro) ease,
+    color var(--dur-micro) ease,
+    box-shadow var(--dur-micro) ease,
+    transform var(--dur-micro) var(--ease-soft),
+    opacity var(--dur-micro) ease;
+}
+
+.calendar-appointment.is-interactive {
+  transition:
+    transform 160ms var(--ease-soft),
+    box-shadow 160ms var(--ease-soft),
+    outline-color 160ms ease;
+}
+
+.calendar-appointment.is-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgb(16 24 40 / 28%);
+}
+
+.calendar-appointment.is-interactive:active {
+  transform: translateY(0);
+}
+
+.af-btn-primary:active,
+.af-btn-secondary:active,
+.af-pill:active {
+  transform: translateY(0.5px);
+}
+
+/* Icon-only controls give way slightly on press so taps register as physical. */
+.af-icon-btn:active,
+.af-section-glyph-btn:active,
+.af-card-icons button:active,
+.product-icon-button:active,
+.nav-icon-button:active,
+.nav-help-button:active,
+.toolbar-plain-icon:active,
+.toolbar-nav-arrow:active,
+.voice-button:active {
+  transform: scale(0.92);
+}
+
+.af-row-toggle:active {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  .calendar-appointment.is-interactive:hover {
+    transform: none;
+  }
+
+  .af-meter-fill {
+    clip-path: none !important;
+  }
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgb(21 94 239 / 55%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .drawer {
+    width: calc(100vw - (var(--drawer-inset) * 2));
+  }
+
+  .product-bar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .global-search {
+    display: none;
+  }
+}

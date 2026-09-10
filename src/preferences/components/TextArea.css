@@ -1,0 +1,52 @@
+.text-area {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.text-area-container {
+  background-color: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  min-height: 122px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 12px;
+}
+
+.text-area-element {
+  flex: 1;
+  width: 100%;
+  min-height: 96px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #1a1a1a;
+  resize: none;
+}
+
+.text-area-element::placeholder {
+  color: #666666;
+}
+
+.text-area-character-count {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18.08px;
+  color: #666666;
+  text-align: right;
+}
+
+.text-area-container:focus-within {
+  border-color: #1132ee;
+}
+

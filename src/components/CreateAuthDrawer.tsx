@@ -187,9 +187,8 @@ export function authRecordFromForm(form: CreateAuthForm): AuthRecord {
       ...(form.referringProvider ? [form.referringProvider] : []),
       ...(form.tags ? [form.tags] : []),
     ],
-    notes: form.notes
-      ? [{ id: `n${Date.now()}`, text: form.notes, author: 'Adam Smith', timestamp: new Date().toISOString() }]
-      : [],
+    notes: [],
+    authNotes: form.notes.trim(),
     orderBased: Boolean(cpts?.length),
     orderCpts: cpts,
   };

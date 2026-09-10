@@ -1,0 +1,154 @@
+.prior-auth-overlay {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(20 20 28 / 52%);
+}
+
+.prior-auth-modal {
+  width: min(100%, 836px);
+  min-height: 234px;
+  padding: 38px 27px 16px;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(16 24 40 / 24%);
+}
+
+.prior-auth-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.prior-auth-title-row h2 {
+  margin: 0;
+  color: #3a3a42;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.prior-auth-hash {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 5px;
+  color: #54aa6a;
+  background: #eef9f0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.prior-auth-toolbar {
+  display: flex;
+  height: 33px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.prior-auth-tabs {
+  display: flex;
+  height: 26px;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.prior-auth-tabs button {
+  padding: 0 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #6e6e77;
+  background: transparent;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.prior-auth-tabs button.is-active {
+  color: #1644d4;
+  border-bottom-color: #1644d4;
+  font-weight: 500;
+}
+
+.new-prior-auth {
+  height: 20px;
+  margin-bottom: 5px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #1545df;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.prior-auth-table {
+  overflow: hidden;
+  border: 1px solid #dcdce1;
+  border-radius: 5px;
+}
+
+.prior-auth-table-head {
+  display: grid;
+  height: 26px;
+  grid-template-columns: 48px 126px 125px 128px 124px 126px minmax(80px, 1fr);
+  align-items: center;
+  padding: 0 4px;
+  color: #3f3f47;
+  background: #f4f4f3;
+  font-size: 8px;
+}
+
+.prior-auth-empty {
+  display: grid;
+  height: 62px;
+  place-items: center;
+  color: #44444c;
+  border-bottom: 1px solid #ededf0;
+  font-size: 9px;
+}
+
+.prior-auth-pagination {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0 13px;
+  color: #45454d;
+  font-size: 8px;
+}
+
+.prior-auth-pagination select {
+  width: 36px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid #dedee3;
+  border-radius: 4px;
+  color: #4b4b53;
+  background: #fff;
+  font: inherit;
+}
+
+.prior-auth-pagination button {
+  padding: 0 2px;
+  border: 0;
+  color: #d0d0d5;
+  background: transparent;
+  font-size: 15px;
+}
+
+@media (min-width: 1400px) {
+  .prior-auth-modal {
+    width: 82vw;
+    max-width: 1280px;
+    min-height: 360px;
+    padding: 58px 42px 24px;
+  }
+
+  .prior-auth-table-head {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
