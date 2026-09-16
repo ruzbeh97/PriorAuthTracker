@@ -17,6 +17,40 @@ import { migrateAuthState } from '../types';
 import UtilizationBar from './UtilizationBar';
 import { parseAssigneeNames } from '../tasks';
 
+const AUTH_TIMELINE_KEY = 'prior-auth:auth-timelines';
+const AUTH_TIMELINE_EVENT = 'prior-auth:auth-timelines';
+
+function publishAuthTimelines(records: AuthRecord[]) {
+  let byOrderId: Record<string, AuthRecord['timeline']> = {};
+  let byAuthNumber: Record<string, AuthRecord['timeline']> = {};
+  try {
+    const parsed = window.localStorage.getItem(AUTH_TIMELINE_KEY);
+    const snapshot = parsed ? JSON.parse(parsed) : null;
+    if (snapshot && typeof snapshot === 'object') {
+      byOrderId = snapshot.byOrderId ?? {};
+      byAuthNumber = snapshot.byAuthNumber ?? {};
+    }
+  } catch {
+    byOrderId = {};
+    byAuthNumber = {};
+  }
+  for (const record of records) {
+    const timeline = record.timeline ?? [];
+    for (const cpt of record.orderCpts ?? []) {
+      if (cpt.orderId) byOrderId[cpt.orderId] = timeline;
+    }
+    const number = record.authNumber?.trim();
+    if (number) byAuthNumber[number] = timeline;
+  }
+  const snapshot = { byOrderId, byAuthNumber };
+  try {
+    window.localStorage.setItem(AUTH_TIMELINE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Storage can be unavailable in private browsing; the live event still updates an open note.
+  }
+  window.dispatchEvent(new CustomEvent(AUTH_TIMELINE_EVENT, { detail: snapshot }));
+}
+
 function StateChip({ state }: { state: string }) {
   if (state === 'Authorized' || state === 'Scheduled') {
     return (
@@ -588,6 +622,10 @@ export default function PriorAuthTracker2({
     );
   }, [orderAuthRecords]);
 
+  useEffect(() => {
+    publishAuthTimelines(records);
+  }, [records]);
+
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -753,7 +791,7 @@ export default function PriorAuthTracker2({
       if (!toRecord) return prev;
       const fromEntry: TimelineEntry = { id: `tl-${Date.now()}-f`, timestamp: now, author: 'Adam Smith', action: { kind: 'appointment_moved', apptDateTime: apptDateTime || '', apptType: type, fromAuth: fromRecord.authNumber || '--', toAuth: toAuthNumber } };
       const toEntry: TimelineEntry = { id: `tl-${Date.now()}-t`, timestamp: now, author: 'Adam Smith', action: { kind: 'appointment_moved', apptDateTime: apptDateTime || '', apptType: type, fromAuth: fromRecord.authNumber || '--', toAuth: toAuthNumber } };
-      return prev.map((r) => {
+      const next = prev.map((r) => {
         if (r.id === fromRecord.id) {
           return { ...r, ...(type === 'completed' ? { visitsCompleted: Math.max(0, r.visitsCompleted - 1) } : { visitsScheduled: Math.max(0, r.visitsScheduled - 1) }), timeline: [...(r.timeline || []), fromEntry] };
         }
@@ -762,8 +800,14 @@ export default function PriorAuthTracker2({
         }
         return r;
       });
+      next.forEach((record) => {
+        if ((record.id === fromRecord.id || record.id === toRecord.id) && record.orderSource) {
+          onOrderAuthRecordUpdate?.(record);
+        }
+      });
+      return next;
     });
-  }, []);
+  }, [onOrderAuthRecordUpdate]);
 
   const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string) => {
     const now = new Date().toISOString();
@@ -813,14 +857,17 @@ export default function PriorAuthTracker2({
   const handleAddNote = useCallback((recordId: string, text: string) => {
     const now = new Date().toISOString();
     const noteId = `n${Date.now()}`;
-    setRecords((prev) =>
-      prev.map((r) => {
+    setRecords((prev) => {
+      const next = prev.map((r) => {
         if (r.id !== recordId) return r;
         const entry: TimelineEntry = { id: `tl-${Date.now()}`, timestamp: now, author: 'Adam Smith', action: { kind: 'note_added', text } };
         return { ...r, notes: [...r.notes, { id: noteId, text, author: 'Adam Smith', timestamp: now }], timeline: [...(r.timeline || []), entry] };
-      })
-    );
-  }, []);
+      });
+      const updated = next.find((r) => r.id === recordId);
+      if (updated?.orderSource) onOrderAuthRecordUpdate?.(updated);
+      return next;
+    });
+  }, [onOrderAuthRecordUpdate]);
 
   const handleDeleteNote = useCallback((recordId: string, noteId: string) => {
     setRecords((prev) =>

@@ -41,7 +41,60 @@ const PreferencesPage = lazy(() => import('./preferences/PreferencesPage'));
 const ORDER_AUTHORIZATIONS_EVENT = 'patient-chart:order-authorizations';
 const ORDER_AUTH_STATE_EVENT = 'patient-chart:order-auth-state';
 const ORDER_AUTH_STORAGE_KEY = 'prior-auth:order-records';
+const PATIENT_AUTH_NUMBERS_KEY = 'prior-auth:patient-auth-numbers';
+export const PATIENT_AUTH_NUMBERS_EVENT = 'prior-auth:patient-auth-numbers';
+const AUTH_TIMELINE_KEY = 'prior-auth:auth-timelines';
+const AUTH_TIMELINE_EVENT = 'prior-auth:auth-timelines';
 const NOTE_ORDERS_STORAGE_KEY = 'patient-chart:note-orders';
+
+function publishPatientAuthNumbers(records: AuthRecord[]) {
+  const byPatient: Record<string, string[]> = {};
+  for (const record of records) {
+    const number = record.authNumber?.trim();
+    if (!number) continue;
+    const name = record.patient.name;
+    const existing = byPatient[name] ?? [];
+    if (!existing.includes(number)) existing.push(number);
+    byPatient[name] = existing;
+  }
+  try {
+    window.localStorage.setItem(PATIENT_AUTH_NUMBERS_KEY, JSON.stringify(byPatient));
+  } catch {
+    // Storage can be unavailable in private browsing; the live event still updates an open drawer.
+  }
+  window.dispatchEvent(new CustomEvent(PATIENT_AUTH_NUMBERS_EVENT, { detail: byPatient }));
+}
+
+function publishAuthTimelines(records: AuthRecord[]) {
+  let byOrderId: Record<string, AuthRecord['timeline']> = {};
+  let byAuthNumber: Record<string, AuthRecord['timeline']> = {};
+  try {
+    const parsed = window.localStorage.getItem(AUTH_TIMELINE_KEY);
+    const snapshot = parsed ? JSON.parse(parsed) : null;
+    if (snapshot && typeof snapshot === 'object') {
+      byOrderId = snapshot.byOrderId ?? {};
+      byAuthNumber = snapshot.byAuthNumber ?? {};
+    }
+  } catch {
+    byOrderId = {};
+    byAuthNumber = {};
+  }
+  for (const record of records) {
+    const timeline = record.timeline ?? [];
+    for (const cpt of record.orderCpts ?? []) {
+      if (cpt.orderId) byOrderId[cpt.orderId] = timeline;
+    }
+    const number = record.authNumber?.trim();
+    if (number) byAuthNumber[number] = timeline;
+  }
+  const snapshot = { byOrderId, byAuthNumber };
+  try {
+    window.localStorage.setItem(AUTH_TIMELINE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Storage can be unavailable in private browsing; the live event still updates an open note.
+  }
+  window.dispatchEvent(new CustomEvent(AUTH_TIMELINE_EVENT, { detail: snapshot }));
+}
 
 // No backend in the prototype, so order-driven rows persist across refreshes locally.
 function loadStoredOrderAuthRecords(): AuthRecord[] {
@@ -102,6 +155,7 @@ function publishOrderAuthState(record: AuthRecord) {
         startDate: record.startDate,
         endDate: record.endDate,
         authNotes: record.authNotes ?? '',
+        timeline: record.timeline ?? [],
       },
     }),
   );
@@ -255,6 +309,11 @@ export default function App() {
       // Storage can be unavailable in private browsing; the tracker still works in memory.
     }
   }, [orderAuthRecords]);
+
+  useEffect(() => {
+    publishPatientAuthNumbers([...records, ...orderAuthRecords]);
+    publishAuthTimelines([...records, ...orderAuthRecords]);
+  }, [records, orderAuthRecords]);
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
 
