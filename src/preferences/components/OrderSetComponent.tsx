@@ -4,7 +4,7 @@ import Dropdown from './Dropdown'
 import { ORDER_SETS, INDIVIDUAL_ORDERS, getOrderDetails, inferOrderCategory, type OrderCategory } from '../data/snippetOrders'
 import { getOrderPreconfig } from '../data/orderPreconfig'
 import type { OrderDiagnosisMap } from '../data/snippetServices'
-import './OrderSetComponent.css'
+import { useAssigneeGroups } from '../../assignees'
 
 interface OrderSetComponentProps {
   onRemove?: () => void
@@ -332,6 +332,7 @@ const PROCEDURE_MODIFIER_OPTIONS = ['50', 'LT', 'RT', '59']
 const PROCEDURE_ICD10_OPTIONS = ['M25.561', 'M25.551', 'M25.552', 'S83.511A']
 const ASSIGNEE_OPTIONS = [
   'Ashton Roy',
+  'Ashton Lee',
   'Bailey Moon',
   'Brad Hope',
   'Leo Wood',
@@ -348,6 +349,11 @@ const ASSIGNEE_OPTIONS = [
   'Piper West',
   'Gavin Lake',
   'Violet Ash',
+  'James Harden',
+  'Molly Harden',
+  'James Franco',
+  'Natasha Smith',
+  'Ronald Regin',
 ]
 const SAVED_SIG_OPTIONS = [
   'Take 1 tablet by mouth every 6 hours as needed for pain.',
@@ -811,6 +817,7 @@ function VisitNoteOrderDetail({
   const [orderTitle, setOrderTitle] = useState(isProcedure ? '' : details.description)
   const [requiresAuth, setRequiresAuth] = useState(false)
   const [assignedTo, setAssignedTo] = useState('')
+  const groupOptions = useAssigneeGroups()
   const [inHouse, setInHouse] = useState(true)
   const [contactSource, setContactSource] = useState<'NPI' | 'Contact List'>('NPI')
   const [sig, setSig] = useState('')
@@ -894,6 +901,7 @@ function VisitNoteOrderDetail({
                   value={assignedTo}
                   onChange={setAssignedTo}
                   options={ASSIGNEE_OPTIONS}
+                  groupOptions={groupOptions}
                   disabled={disabled}
                 />
               </div>

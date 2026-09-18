@@ -8,7 +8,6 @@ const PREFERENCE_SECTIONS = [
   {
     label: 'Clinical',
     items: ['Chart Note', 'Facesheets', 'ICD10', 'Measurements', 'Order Sets', 'Rooms', 'Text Snippets'],
-    activeItem: 'Text Snippets',
   },
   {
     label: 'Administrative',
@@ -24,11 +23,22 @@ const PREFERENCE_SECTIONS = [
   },
 ]
 
+// Only these pages exist in the prototype; the rest stay inert placeholders.
+export const NAVIGABLE_PREFERENCE_ITEMS = [
+  'Text Snippets',
+  'Prior Authorization Tracker',
+  'User Groups',
+] as const
+
+export type PreferenceItem = (typeof NAVIGABLE_PREFERENCE_ITEMS)[number]
+
 interface PreferencesSidebarProps {
   onClose: () => void
+  activeItem: PreferenceItem
+  onSelect: (item: PreferenceItem) => void
 }
 
-function PreferencesSidebar({ onClose }: PreferencesSidebarProps) {
+function PreferencesSidebar({ onClose, activeItem, onSelect }: PreferencesSidebarProps) {
   return (
     <div className="preferences-sidebar">
       <div className="preferences-sidebar-header">
@@ -46,14 +56,18 @@ function PreferencesSidebar({ onClose }: PreferencesSidebarProps) {
           <div key={section.label} className="pref-section">
             <div className="pref-section-label">{section.label}</div>
             <ul className="pref-section-items">
-              {section.items.map(item => (
-                <li
-                  key={item}
-                  className={`pref-item ${'activeItem' in section && section.activeItem === item ? 'active' : ''}`}
-                >
-                  {item}
-                </li>
-              ))}
+              {section.items.map(item => {
+                const isNavigable = (NAVIGABLE_PREFERENCE_ITEMS as readonly string[]).includes(item)
+                return (
+                  <li
+                    key={item}
+                    className={`pref-item ${activeItem === item ? 'active' : ''}`}
+                    onClick={isNavigable ? () => onSelect(item as PreferenceItem) : undefined}
+                  >
+                    {item}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}

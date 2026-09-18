@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { AssigneePickerPopover } from '../../components/AssigneePicker'
 import './Dropdown.css'
 
 interface DropdownProps {
@@ -6,6 +7,7 @@ interface DropdownProps {
   value: string
   onChange: (value: string) => void
   options: string[]
+  groupOptions?: string[]
   optionLabels?: Record<string, string>
   optionDescriptions?: Record<string, string>
   menuClassName?: string
@@ -18,6 +20,7 @@ function Dropdown({
   value,
   onChange,
   options,
+  groupOptions,
   optionLabels,
   optionDescriptions,
   menuClassName,
@@ -26,6 +29,10 @@ function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  // Passing groupOptions marks this as an assignee field, which uses the shared picker.
+  const isAssignee = Boolean(groupOptions)
+  const catalog = options
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -62,7 +69,8 @@ function Dropdown({
 
   return (
     <div className={`dropdown ${disabled ? 'dropdown-disabled' : ''}`} ref={dropdownRef}>
-      <div 
+      <div
+        ref={triggerRef}
         className="dropdown-input"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         aria-disabled={disabled}
@@ -76,12 +84,22 @@ function Dropdown({
           </svg>
         </div>
       </div>
-      {isOpen && !disabled && (
+      {isOpen && !disabled && isAssignee && (
+        <AssigneePickerPopover
+          anchorRef={triggerRef}
+          align="left"
+          selected={value ? [value] : []}
+          extraIndividuals={options}
+          onSelect={option => handleSelect(option)}
+          onDismiss={() => setIsOpen(false)}
+        />
+      )}
+      {isOpen && !disabled && !isAssignee && (
         <div className={`dropdown-menu ${menuClassName ?? ''}`.trim()}>
-          {options.length === 0 ? (
+          {catalog.length === 0 ? (
             <div className="dropdown-option dropdown-option-empty">{emptyMessage}</div>
           ) : (
-            options.map(option => (
+            catalog.map(option => (
               <div
                 key={option}
                 className={`dropdown-option ${useRichOptions ? 'dropdown-option-rich' : ''} ${value === option ? 'selected' : ''}`}

@@ -530,7 +530,8 @@ export default function App() {
     });
   }, []);
 
-  const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string) => {
+  const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
     const now = new Date().toISOString();
     const entry: TimelineEntry = {
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -541,7 +542,7 @@ export default function App() {
     setRecords((prev) =>
       prev.map((r) => {
         if (r.id !== recordId) return r;
-        const updated = { ...r, timeline: [...(r.timeline || []), entry] };
+        const updated = silent ? { ...r } : { ...r, timeline: [...(r.timeline || []), entry] };
         switch (field) {
           case 'Authorization Number': updated.authNumber = to; break;
           case 'Assigned To': updated.assignedTo = to; break;

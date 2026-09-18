@@ -311,7 +311,7 @@ function TableRow({
 
       {/* State */}
       <td className="px-4 py-4">
-        <StateSelect value={record.state} onChange={onStateChange} />
+        <StateSelect value={record.state} assignedTo={record.assignedTo} onChange={onStateChange} />
       </td>
 
       {/* Status */}

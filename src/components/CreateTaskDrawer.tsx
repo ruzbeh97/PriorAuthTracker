@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronDown, Search, X } from 'lucide-react';
 import { formatAuthDateFromDate } from '../utils';
+import { useAssigneeGroups } from '../assignees';
+import { AssigneePickerPopover } from './AssigneePicker';
 
 export type TaskPriority = 'Urgent' | 'High' | 'Medium' | 'Low' | 'No Priority';
 export type TaskStatus = 'Not Started' | 'Done';
@@ -28,8 +30,6 @@ const USER_OPTIONS = [
   'Ashton Roy',
   'Bailey Moon',
 ];
-
-const GROUP_OPTIONS = ["Dr. Samimi's Staff", 'Admins', 'CCDA Inbox'];
 
 const PATIENT_OPTIONS = [
   'Jordan Reyes',
@@ -74,6 +74,7 @@ interface CreateTaskDrawerProps {
 
 export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTaskDrawerProps) {
   const [form, setForm] = useState<CreateTaskForm>(emptyForm);
+  const groupOptions = useAssigneeGroups();
 
   useEffect(() => {
     if (open) setForm(emptyForm());
@@ -100,8 +101,6 @@ export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTask
   };
 
   if (!open) return null;
-
-  const assigneeOptions = form.assignmentMode === 'group' ? GROUP_OPTIONS : USER_OPTIONS;
 
   const drawer = (
     <div className="fixed inset-0 z-[90] flex justify-end">
@@ -135,42 +134,13 @@ export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTask
               onChange={(value) => update('description', value)}
             />
 
-            <div className="rounded-md border border-[#c4c4c4] bg-white">
-              <div className="flex border-b border-[#e6e6e6]">
-                <AssignmentTab
-                  active={form.assignmentMode === 'individual'}
-                  onClick={() => {
-                    update('assignmentMode', 'individual');
-                    update('assignee', '');
-                  }}
-                >
-                  Assign to an Individual User
-                </AssignmentTab>
-                <AssignmentTab
-                  active={form.assignmentMode === 'group'}
-                  onClick={() => {
-                    update('assignmentMode', 'group');
-                    update('assignee', '');
-                  }}
-                >
-                  Assign to a Group
-                </AssignmentTab>
-              </div>
-              <div className="p-4">
-                <SearchableOutlineSelect
-                  label="Assignee"
-                  required
-                  value={form.assignee}
-                  placeholder={
-                    form.assignmentMode === 'group'
-                      ? 'Search and select a group'
-                      : 'Search and select a user'
-                  }
-                  options={assigneeOptions}
-                  onChange={(value) => update('assignee', value)}
-                />
-              </div>
-            </div>
+            <AssigneeOutlineField
+              value={form.assignee}
+              onSelect={(name) => {
+                update('assignee', name);
+                update('assignmentMode', groupOptions.includes(name) ? 'group' : 'individual');
+              }}
+            />
 
             <SearchableOutlineSelect
               label="Patients"
@@ -245,26 +215,45 @@ export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTask
   return createPortal(drawer, document.body);
 }
 
-function AssignmentTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: string;
-}) {
+/** Outlined field that opens the shared group/individual picker. */
+function AssigneeOutlineField({ value, onSelect }: { value: string; onSelect: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative px-4 py-3 text-[13px] ${
-        active ? 'font-medium text-[#1132ee]' : 'text-[#737373] hover:text-[#1a1a1a]'
-      }`}
-    >
-      {children}
-      {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#1132ee]" />}
-    </button>
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={`relative flex h-12 w-full items-center rounded-md border bg-white px-3.5 text-left ${
+          open ? 'border-[#1132ee]' : 'border-[#c4c4c4]'
+        }`}
+      >
+        <span className="absolute -top-2 left-3 bg-white px-1 text-[12px] leading-4 text-[#5f5f5f]">
+          Assignee
+          <span className="text-[#d32f2f]"> *</span>
+        </span>
+        <span className={`min-w-0 flex-1 truncate text-[14px] ${value ? 'text-[#1a1a1a]' : 'text-[#9e9e9e]'}`}>
+          {value || 'Search and select a group or user'}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-[#737373]" strokeWidth={1.75} />
+      </button>
+      {open ? (
+        <AssigneePickerPopover
+          anchorRef={triggerRef}
+          align="left"
+          selected={value ? [value] : []}
+          extraIndividuals={USER_OPTIONS}
+          onSelect={(name) => {
+            onSelect(name);
+            setOpen(false);
+          }}
+          onDismiss={() => setOpen(false)}
+        />
+      ) : null}
+    </div>
   );
 }
 

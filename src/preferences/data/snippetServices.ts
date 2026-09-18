@@ -1,4 +1,4 @@
-import { diagnosisToIcd10Options } from '../components/DiagnosisCodesComponent'
+import { diagnosisToIcd10Options } from './diagnosisOptions'
 import { ORDER_SETS, getOrderDetails } from './snippetOrders'
 
 export interface SnippetServiceRow {

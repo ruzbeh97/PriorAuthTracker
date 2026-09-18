@@ -166,6 +166,93 @@ const DEFAULT_ROWS: TableRow[] = [
         ],
       },
     },
+    {
+      id: '5',
+      phrase: 'Hip Injection w/Order',
+      procedureDoc:
+        'Ultrasound-guided intra-articular corticosteroid injection of the right hip was performed with methylprednisolone acetate 40 mg for symptomatic management of hip pain after an inadequate response to conservative therapy. Orders for the aspiration/injection and the injectable medication were placed with this visit.',
+      users: 'Dr. Swarovski',
+      section: 'Plan',
+      groupName: 'Treatment Plan',
+      appointmentType: 'IE - Hip',
+      useForEHRScribe: true,
+      configItemTypes: ['text-snippet', 'order-set', 'diagnosis-codes'],
+      diagnosisCodes: ['M25.551 - Pain in right hip'],
+      orderSelections: ['Hip Injection Only'],
+      snippetOrders: [
+        { name: 'Drain/inj joint/bursa w/o us', type: 'injection' },
+        { name: 'Injection, methylprednisolone acetate, 1 mg', type: 'med' },
+      ],
+      snippetServiceGroups: buildSnippetServiceGroups({
+        orderSelections: ['Hip Injection Only'],
+        diagnosisCodes: ['M25.551 - Pain in right hip'],
+      }),
+      textSnippetData: {
+        html:
+          '<span class="alternate-word-dropdown-placeholder" data-dropdown-id="hiw-1">Ultrasound-guided</span> intra-articular corticosteroid injection of the <span class="alternate-word-dropdown-placeholder" data-dropdown-id="hiw-2">right hip</span> was performed with methylprednisolone acetate <span class="alternate-word-dropdown-placeholder" data-dropdown-id="hiw-3">40 mg</span> for symptomatic management of hip pain after an inadequate response to conservative therapy. Orders for the aspiration/injection and the injectable medication were placed with this visit.',
+        alternateWordDropdowns: [
+          {
+            id: 'hiw-1',
+            words: [
+              { id: 'hiw-1a', word: 'Ultrasound-guided', isDefault: true },
+              { id: 'hiw-1b', word: 'Fluoroscopically guided', isDefault: false },
+              { id: 'hiw-1c', word: 'Landmark-guided', isDefault: false },
+            ],
+          },
+          {
+            id: 'hiw-2',
+            words: [
+              { id: 'hiw-2a', word: 'right hip', isDefault: true },
+              { id: 'hiw-2b', word: 'left hip', isDefault: false },
+            ],
+          },
+          {
+            id: 'hiw-3',
+            words: [
+              { id: 'hiw-3a', word: '40 mg', isDefault: true },
+              { id: 'hiw-3b', word: '80 mg', isDefault: false },
+              { id: 'hiw-3c', word: '20 mg', isDefault: false },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      id: '6',
+      phrase: 'Hip Injection No Order',
+      procedureDoc:
+        'Discussed an intra-articular corticosteroid injection of the right hip for ongoing hip pain. The patient elected to defer the injection at this time and will continue activity modification, home exercise, and anti-inflammatories. No orders were placed today; we will reassess at the next visit.',
+      users: 'Dr. Swarovski',
+      section: 'Plan',
+      groupName: 'Treatment Plan',
+      appointmentType: 'IE - Hip',
+      useForEHRScribe: true,
+      configItemTypes: ['text-snippet', 'diagnosis-codes'],
+      diagnosisCodes: ['M25.551 - Pain in right hip'],
+      orderSelections: [],
+      snippetOrders: [],
+      snippetServiceGroups: [],
+      textSnippetData: {
+        html:
+          'Discussed an intra-articular corticosteroid injection of the <span class="alternate-word-dropdown-placeholder" data-dropdown-id="hin-1">right hip</span> for ongoing hip pain. The patient elected to <span class="alternate-word-dropdown-placeholder" data-dropdown-id="hin-2">defer the injection at this time</span> and will continue activity modification, home exercise, and anti-inflammatories. No orders were placed today; we will reassess at the next visit.',
+        alternateWordDropdowns: [
+          {
+            id: 'hin-1',
+            words: [
+              { id: 'hin-1a', word: 'right hip', isDefault: true },
+              { id: 'hin-1b', word: 'left hip', isDefault: false },
+            ],
+          },
+          {
+            id: 'hin-2',
+            words: [
+              { id: 'hin-2a', word: 'defer the injection at this time', isDefault: true },
+              { id: 'hin-2b', word: 'schedule the injection at a later visit', isDefault: false },
+            ],
+          },
+        ],
+      },
+    },
 ]
 
 export { DEFAULT_ROWS }

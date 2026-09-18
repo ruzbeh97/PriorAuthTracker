@@ -2,10 +2,12 @@ import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelLeftOpen, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare, NotebookPen } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
-import { AUTH_STATES } from '../types';
+import { useStateOptionsForAssignee } from '../authStates';
 import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
 import { formatAuthDate, formatAuthDateFromDate, parseAuthDate } from '../utils';
+import { ASSIGNEE_INDIVIDUALS, useAssigneeGroups } from '../assignees';
+import { AssigneePickerPopover } from './AssigneePicker';
 
 const VisitNoteReadOnlyPanel = lazy(async () => {
   const { VisitNoteReadOnlyPanel: Panel } = await import('@visit-note/patient-chart');
@@ -17,7 +19,8 @@ interface AuthDetailPanelProps {
   allRecords: AuthRecord[];
   onClose?: () => void;
   onReassignVisit: (fromRecordId: string, toAuthNumber: string, type: 'completed' | 'scheduled', apptDateTime?: string) => void;
-  onDetailChange: (recordId: string, field: string, from: string, to: string) => void;
+  /** Pass `silent` to apply a value without writing it to the activity timeline. */
+  onDetailChange: (recordId: string, field: string, from: string, to: string, options?: { silent?: boolean }) => void;
   onAddNote?: (recordId: string, text: string) => void;
   onDeleteNote?: (recordId: string, noteId: string) => void;
   tableCollapsed?: boolean;
@@ -146,11 +149,34 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [portalOpen, setPortalOpen] = useState(false);
 
-  const hasPendingChanges = pendingReassignments.length > 0;
+  // Edits apply to the record right away so the table stays in step, but they are held here
+  // until Save writes them to the activity timeline, which is also what Revert undoes.
+  const [pendingEdits, setPendingEdits] = useState<Array<{ field: string; from: string; to: string }>>([]);
+
+  useEffect(() => {
+    setPendingEdits([]);
+  }, [record.id]);
+
+  const hasPendingChanges = pendingReassignments.length > 0 || pendingEdits.length > 0;
 
   function commitDetail(field: string, oldVal: string, newVal: string) {
     if (newVal === oldVal) return;
-    onDetailChange(record.id, field, oldVal, newVal);
+    onDetailChange(record.id, field, oldVal, newVal, { silent: true });
+    setPendingEdits((prev) => {
+      const existing = prev.find((edit) => edit.field === field);
+      const from = existing ? existing.from : oldVal;
+      const rest = prev.filter((edit) => edit.field !== field);
+      // Editing a field back to its original value leaves nothing to save.
+      return newVal === from ? rest : [...rest, { field, from, to: newVal }];
+    });
+  }
+
+  function revertChanges() {
+    [...pendingEdits]
+      .reverse()
+      .forEach((edit) => onDetailChange(record.id, edit.field, edit.to, edit.from, { silent: true }));
+    setPendingEdits([]);
+    setPendingReassignments([]);
   }
 
   const portalUrl = PAYER_PORTAL_URLS[record.payer.name] || `https://www.google.com/search?q=${encodeURIComponent(record.payer.name + ' provider portal')}`;
@@ -167,12 +193,19 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     return [...new Set([...seed, ...fromRecords, record.facility].filter(Boolean))].sort();
   }, [allRecords, record.facility]);
 
+  const groupOptions = useAssigneeGroups();
+  // States are configured per user group, so the list follows whoever owns this row.
+  const stateOptions = useStateOptionsForAssignee(record.assignedTo, record.state);
+
   const assigneeOptions = useMemo(() => {
-    const seed = ['Jaime Mandela', 'Emma Smith', 'Adam Smith'];
     const fromRecords = allRecords.flatMap((r) => (r.assignedTo ? r.assignedTo.split(', ').filter(Boolean) : []));
     const current = record.assignedTo ? record.assignedTo.split(', ').filter(Boolean) : [];
-    return [...new Set([...seed, ...fromRecords, ...current])].sort();
-  }, [allRecords, record.assignedTo]);
+    return [...new Set([
+      ...ASSIGNEE_INDIVIDUALS,
+      ...fromRecords.filter((name) => !groupOptions.includes(name)),
+      ...current.filter((name) => !groupOptions.includes(name)),
+    ])].sort();
+  }, [allRecords, record.assignedTo, groupOptions]);
 
   const payerOptions = useMemo(() => {
     const fromRecords = allRecords.map((r) => r.payer.name).filter(Boolean);
@@ -297,27 +330,37 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
           </button>
           <span className="w-px h-7 bg-outline" />
           <button
+            disabled={!hasPendingChanges}
             onClick={() => {
-              if (hasPendingChanges) {
-                const allAppts = [...completedAppts, ...scheduledAppts];
-                pendingReassignments.forEach((p) => {
-                  const appt = allAppts.find((a) => a.id === p.apptId);
-                  onReassignVisit(record.id, p.toAuthNumber, p.type, appt?.dateTime);
-                });
-                const reassignedIds = new Set(pendingReassignments.map((p) => p.apptId));
-                setCompletedAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
-                setScheduledAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
-                setPendingReassignments([]);
-              }
+              if (!hasPendingChanges) return;
+              const allAppts = [...completedAppts, ...scheduledAppts];
+              pendingReassignments.forEach((p) => {
+                const appt = allAppts.find((a) => a.id === p.apptId);
+                onReassignVisit(record.id, p.toAuthNumber, p.type, appt?.dateTime);
+              });
+              const reassignedIds = new Set(pendingReassignments.map((p) => p.apptId));
+              setCompletedAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
+              setScheduledAppts((prev) => prev.filter((a) => !reassignedIds.has(a.id)));
+              setPendingReassignments([]);
+              pendingEdits.forEach((edit) => onDetailChange(record.id, edit.field, edit.from, edit.to));
+              setPendingEdits([]);
             }}
             className={`h-8 px-4 rounded-full text-sm font-medium transition-colors ${
               hasPendingChanges
                 ? 'bg-primary border border-primary text-white hover:bg-primary-hover'
-                : 'border border-outline text-text-secondary hover:bg-surface-variant'
+                : 'border border-outline text-text-disabled cursor-not-allowed'
             }`}
           >
             Save
           </button>
+          {hasPendingChanges && (
+            <button
+              onClick={revertChanges}
+              className="h-8 px-4 rounded-full border border-outline text-sm font-medium text-text-secondary transition-colors hover:bg-surface-variant"
+            >
+              Revert
+            </button>
+          )}
         </div>
       </div>
 
@@ -372,8 +415,9 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
           <div className="flex flex-col gap-1">
             <EditableDetailRow
               label="Authorization Number"
-              value={record.authNumber || '--'}
-              onChange={(v) => commitDetail('Authorization Number', record.authNumber || '--', v)}
+              value={record.authNumber}
+              placeholder="--"
+              onChange={(v) => commitDetail('Authorization Number', record.authNumber, v)}
               copyable={!!record.authNumber}
             />
             <EditableDetailRow
@@ -485,11 +529,8 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
               <EditableSelect
                 value={record.state}
-                onChange={(value) => {
-                  if (value === record.state) return;
-                  onDetailChange(record.id, 'State', record.state, value);
-                }}
-                options={AUTH_STATES}
+                onChange={(value) => commitDetail('State', record.state, value)}
+                options={stateOptions}
               />
             </div>
             <EditableDetailRow
@@ -497,6 +538,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               value={record.assignedTo}
               onChange={(v) => commitDetail('Assigned To', record.assignedTo, v)}
               options={assigneeOptions}
+              groupOptions={groupOptions}
             />
             <EditableDetailRow
               label="Provider"
@@ -1946,6 +1988,7 @@ function CptTrackingBlock({
   onChange: (next: CptEntry) => void;
   onDelete: () => void;
 }) {
+  const unitLabel = entry.unitTrackingType || 'Units';
   return (
     <div className="flex gap-2.5 w-full pb-0.5 border-b border-outline last:border-b-0">
       <div className="w-0.5 self-stretch rounded-full bg-primary shrink-0" />
@@ -1978,7 +2021,9 @@ function CptTrackingBlock({
               <div className="w-40 shrink-0">
                 <p className="text-sm leading-[22px] text-accent-700">Tracking Type</p>
                 <p className="text-xs font-medium leading-[18px] text-text-secondary">
-                  Counts every unit of each selected CPT code used in claims
+                  {unitLabel === 'Visits'
+                    ? 'Counts every visit where any of the selected CPT codes were billed'
+                    : 'Counts every unit of each selected CPT code used in claims'}
                 </p>
               </div>
               <CptFieldSelect
@@ -1989,13 +2034,13 @@ function CptTrackingBlock({
               />
             </div>
             <div className="flex items-center gap-4">
-              <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">Units</span>
+              <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">{unitLabel}</span>
               <input
                 type="text"
                 inputMode="numeric"
                 value={entry.units}
                 onChange={(e) => onChange({ ...entry, units: e.target.value.replace(/[^\d]/g, '') })}
-                placeholder="Enter Units"
+                placeholder={`Enter ${unitLabel}`}
                 className="flex-1 min-w-0 h-7 px-1.5 py-0.5 rounded-lg bg-surface-variant text-sm text-text-primary placeholder:text-[#808080] focus:outline-none"
               />
             </div>
@@ -2023,16 +2068,27 @@ const DETAIL_CONTROL =
 
 function AuthNotesField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
+  const focused = useRef(false);
 
   useEffect(() => {
+    if (focused.current) return;
     setDraft(value);
   }, [value]);
 
   return (
     <textarea
       value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => onChange(draft)}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onChange(e.target.value);
+      }}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={() => {
+        focused.current = false;
+        setDraft(value);
+      }}
       placeholder="Add notes"
       rows={2}
       className={`${DETAIL_CONTROL} min-w-0 flex-1 resize-none placeholder:text-text-secondary`}
@@ -2133,17 +2189,21 @@ function AppointmentRow({ dateTime, authNumber, dateOptions, authOptions, onAuth
   );
 }
 
-function EditableDetailRow({ label, value, onChange, options, kind }: {
+function EditableDetailRow({ label, value, onChange, options, groupOptions, kind, placeholder }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   copyable?: boolean;
   options?: string[];
+  groupOptions?: string[];
   kind?: 'text' | 'date';
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
+  const focused = useRef(false);
 
   useEffect(() => {
+    if (focused.current) return;
     setDraft(value);
   }, [value]);
 
@@ -2160,13 +2220,23 @@ function EditableDetailRow({ label, value, onChange, options, kind }: {
     <div className="flex items-center gap-2 py-0.5">
       <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
       {options ? (
-        <EditableSelect value={value} onChange={onChange} options={options} />
+        <EditableSelect value={value} onChange={onChange} options={options} groupOptions={groupOptions} />
       ) : (
         <input
           type="text"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => onChange(draft)}
+          placeholder={placeholder}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            onChange(e.target.value);
+          }}
+          onFocus={() => {
+            focused.current = true;
+          }}
+          onBlur={() => {
+            focused.current = false;
+            setDraft(value);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
@@ -2290,13 +2360,26 @@ function DatePickerField({ value, onChange }: { value: string; onChange: (value:
   );
 }
 
-function EditableSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+function EditableSelect({
+  value,
+  onChange,
+  options,
+  groupOptions,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  groupOptions?: string[];
+}) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Assignee fields get the shared group/individual picker instead of a flat list.
+  const isAssignee = Boolean(groupOptions);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isAssignee) return;
     const handle = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
@@ -2305,13 +2388,14 @@ function EditableSelect({ value, onChange, options }: { value: string; onChange:
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [open]);
+  }, [open, isAssignee]);
 
   const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center gap-1 ${DETAIL_CONTROL}`}
@@ -2321,7 +2405,20 @@ function EditableSelect({ value, onChange, options }: { value: string; onChange:
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-text-secondary shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
       </button>
-      {open && (
+      {open && isAssignee ? (
+        <AssigneePickerPopover
+          anchorRef={triggerRef}
+          align="left"
+          selected={value ? value.split(', ').filter(Boolean) : []}
+          extraIndividuals={options}
+          onSelect={(name) => {
+            onChange(name);
+            setOpen(false);
+          }}
+          onDismiss={() => setOpen(false)}
+        />
+      ) : null}
+      {open && !isAssignee && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline rounded shadow-lg overflow-hidden z-30">
           <div className="flex items-center gap-1.5 border-b border-outline px-2 py-1.5">
             <Search className="w-3 h-3 text-text-secondary shrink-0" strokeWidth={1.5} />
@@ -2337,14 +2434,20 @@ function EditableSelect({ value, onChange, options }: { value: string; onChange:
             {filtered.length === 0 ? (
               <div className="px-2 py-1.5 text-xs text-text-secondary">No matches</div>
             ) : (
-              filtered.map((opt) => (
+              filtered.map((option) => (
                 <button
-                  key={opt}
+                  key={option}
                   type="button"
-                  onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
-                  className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${opt === value ? 'bg-primary/5 text-primary font-medium' : 'text-text-primary hover:bg-surface-variant'}`}
+                  onClick={() => {
+                    onChange(option);
+                    setOpen(false);
+                    setSearch('');
+                  }}
+                  className={`flex w-full px-2 py-1.5 text-left text-xs ${
+                    option === value ? 'bg-primary/10 text-primary' : 'text-text-primary hover:bg-surface-variant'
+                  }`}
                 >
-                  {opt}
+                  {option}
                 </button>
               ))
             )}

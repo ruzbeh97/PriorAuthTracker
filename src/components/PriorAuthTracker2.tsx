@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect, useLayoutEffect, Fragment } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, Filter, SlidersHorizontal, Download, Plus, X, User, UserPlus, Circle, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { mockAuthRecords } from '../data';
@@ -16,6 +16,9 @@ import type { AuthRecord, AuthState, TimelineEntry } from '../types';
 import { migrateAuthState } from '../types';
 import UtilizationBar from './UtilizationBar';
 import { parseAssigneeNames } from '../tasks';
+import { isAssigneeGroup } from '../assignees';
+import { stateChipStyle, useAuthStateConfig } from '../authStates';
+import { AssigneePickerPopover } from './AssigneePicker';
 
 const AUTH_TIMELINE_KEY = 'prior-auth:auth-timelines';
 const AUTH_TIMELINE_EVENT = 'prior-auth:auth-timelines';
@@ -52,22 +55,16 @@ function publishAuthTimelines(records: AuthRecord[]) {
 }
 
 function StateChip({ state }: { state: string }) {
-  if (state === 'Authorized' || state === 'Scheduled') {
-    return (
-      <span className="inline-flex items-center px-2 h-7 rounded-lg bg-[#e6f2d9] text-[12px] font-medium leading-[18px] text-[#4f7326]">
-        {state}
-      </span>
-    );
-  }
-  if (state === 'Needs Authorization') {
-    return (
-      <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
-        Needs Authorization
-      </span>
-    );
-  }
+  const states = useAuthStateConfig();
+  // States carry the color set in Preferences; anything unconfigured stays neutral.
+  const style = stateChipStyle(states.find((entry) => entry.name === state)?.color);
   return (
-    <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
+    <span
+      className={`inline-flex items-center px-2 h-7 rounded-lg text-[12px] font-medium leading-[18px] whitespace-nowrap ${
+        style ? '' : 'bg-outline text-text-primary'
+      }`}
+      style={style}
+    >
       {state}
     </span>
   );
@@ -152,6 +149,7 @@ function formatNoteTimestamp(iso: string): string {
 
 const TEAM_MEMBERS = [
   { name: 'Ashton Roy', color: 'bg-[#d1e6fa]' },
+  { name: 'Ashton Lee', color: 'bg-[#d1e6fa]' },
   { name: 'Bailey Moon', color: 'bg-[#e2daf1]' },
   { name: 'Brad Hope', color: 'bg-[#ffd099]' },
   { name: 'Leo Wood', color: 'bg-[#e2daf1]' },
@@ -168,6 +166,11 @@ const TEAM_MEMBERS = [
   { name: 'Piper West', color: 'bg-[#e2daf1]' },
   { name: 'Gavin Lake', color: 'bg-[#e2daf1]' },
   { name: 'Violet Ash', color: 'bg-[#e2daf1]' },
+  { name: 'James Harden', color: 'bg-[#ffd099]' },
+  { name: 'Molly Harden', color: 'bg-[#d1e6fa]' },
+  { name: 'James Franco', color: 'bg-[#e2daf1]' },
+  { name: 'Natasha Smith', color: 'bg-[#ffd099]' },
+  { name: 'Ronald Regin', color: 'bg-[#d1e6fa]' },
 ];
 
 const TEAM_COLOR_MAP = Object.fromEntries(TEAM_MEMBERS.map((m) => [m.name, m.color]));
@@ -190,7 +193,7 @@ function AvatarGroup({ assignedTo }: { assignedTo: string }) {
     <div className="flex items-center justify-center -space-x-2">
       {people.map((name, i) => {
         const initial = name.charAt(0).toUpperCase();
-        const color = TEAM_COLOR_MAP[name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+        const color = TEAM_COLOR_MAP[name] || (isAssigneeGroup(name) ? 'bg-[#d1fae5]' : FALLBACK_COLORS[i % FALLBACK_COLORS.length]);
         return (
           <div
             key={name}
@@ -314,107 +317,26 @@ function AssigneeDropdown({
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   onSelectionChange: (selected: Set<string>) => void;
 }) {
-  const [search, setSearch] = useState('');
-  const assigned = useMemo(() => new Set(assignedTo ? assignedTo.split(', ') : []), [assignedTo]);
-  const [selected, setSelected] = useState<Set<string>>(new Set(assigned));
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const assigned = useMemo(() => (assignedTo ? assignedTo.split(', ').filter(Boolean) : []), [assignedTo]);
 
-  useLayoutEffect(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const dropdownWidth = 240;
-      let left = rect.right - dropdownWidth;
-      if (left < 8) left = 8;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const top = spaceBelow < 420 ? Math.max(8, rect.top - 420) : rect.bottom + 4;
-      setPos({ top, left });
-    }
-  }, [triggerRef]);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onAssign([...selected]);
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [selected, onAssign, onClose]);
-
-  const extraMembers = useMemo(() => {
-    const teamNames = new Set(TEAM_MEMBERS.map((m) => m.name));
-    return [...assigned]
-      .filter((name) => !teamNames.has(name))
-      .map((name, i) => ({ name, color: FALLBACK_COLORS[i % FALLBACK_COLORS.length] }));
-  }, [assigned]);
-
-  const allMembers = useMemo(() => [...extraMembers, ...TEAM_MEMBERS], [extraMembers]);
-
-  const filtered = allMembers.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase())
+  const select = useCallback(
+    (name: string) => {
+      onSelectionChange(new Set([name]));
+      onAssign([name]);
+      onClose();
+    },
+    [onSelectionChange, onAssign, onClose],
   );
 
-  const toggle = (name: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      onSelectionChange(next);
-      return next;
-    });
-  };
-
-  return createPortal(
-    <div
-      ref={ref}
-      style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
-      className="bg-white border border-black/10 rounded-lg shadow-[0px_4px_12px_rgba(0,0,0,0.08)] w-[240px] overflow-hidden"
-      onClick={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      <div className="flex items-start pb-1.5 pl-[18px] pr-2.5 pt-2.5 border-b border-black/10">
-        <input
-          ref={inputRef}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Assign to..."
-          className="flex-1 text-sm text-text-primary placeholder:text-text-tertiary leading-9 h-9 focus:outline-none bg-transparent"
-        />
-      </div>
-      <div className="flex flex-col gap-1 px-2 pt-2.5 pb-2 max-h-[360px] overflow-y-auto">
-        {filtered.map((member) => {
-          const isSelected = selected.has(member.name);
-          const initial = member.name.charAt(0);
-          return (
-            <button
-              key={member.name}
-              onClick={() => toggle(member.name)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg w-full hover:bg-surface-variant transition-colors"
-            >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${member.color}`}>
-                <span className="text-sm font-medium text-[#0f0f0f]">{initial}</span>
-              </div>
-              <span className="flex-1 text-sm text-text-secondary truncate text-left">{member.name}</span>
-              {isSelected ? (
-                <div className="w-[18px] h-[18px] rounded-sm bg-primary flex items-center justify-center shrink-0">
-                  <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-                    <path d="M1 5L4.5 8.5L11 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              ) : (
-                <div className="w-[18px] h-[18px] rounded-sm border-2 border-black/40 bg-white shrink-0" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>,
-    document.body
+  return (
+    <AssigneePickerPopover
+      anchorRef={triggerRef}
+      align="right"
+      selected={assigned}
+      extraIndividuals={assigned}
+      onSelect={select}
+      onDismiss={onClose}
+    />
   );
 }
 
@@ -809,10 +731,13 @@ export default function PriorAuthTracker2({
     });
   }, [onOrderAuthRecordUpdate]);
 
-  const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string) => {
+  // The detail panel applies edits silently while they are unsaved; saving replays them so the
+  // activity timeline and assignment tasks only reflect changes the user committed.
+  const handleDetailChange = useCallback((recordId: string, field: string, from: string, to: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
     const now = new Date().toISOString();
     const entry: TimelineEntry = { id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, timestamp: now, author: 'Adam Smith', action: { kind: 'detail_changed', field, from, to } };
-    if (field === 'Assigned To') {
+    if (!silent && field === 'Assigned To') {
       const record = records.find((item) => item.id === recordId);
       if (record) {
         const addedNames = parseAssigneeNames(to).filter(
@@ -831,7 +756,7 @@ export default function PriorAuthTracker2({
     setRecords((prev) => {
       const next = prev.map((r) => {
         if (r.id !== recordId) return r;
-        const updated = { ...r, timeline: [...(r.timeline || []), entry] };
+        const updated = silent ? { ...r } : { ...r, timeline: [...(r.timeline || []), entry] };
         switch (field) {
           case 'Authorization Number': updated.authNumber = to; break;
           case 'Assigned To': updated.assignedTo = to; break;

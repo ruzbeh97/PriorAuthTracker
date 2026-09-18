@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Archive, X, ChevronDown, MessageSquare, Trash2 } from 'lucide-react';
 import type { AuthState } from '../types';
-import { AUTH_STATES_WITH_ARCHIVED } from '../types';
+import { useAllStateNames } from '../authStates';
+import { AssigneePickerPanel } from './AssigneePicker';
 
 interface BulkActionsProps {
   selectedCount: number;
@@ -32,6 +33,9 @@ export default function BulkActions({
 }: BulkActionsProps) {
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const configuredStates = useAllStateNames();
+  // A bulk edit can span groups, so every configured state is offered here.
+  const stateOptions = [...new Set([...configuredStates, 'Archived'])];
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -76,8 +80,8 @@ export default function BulkActions({
               <ChevronDown className="w-3.5 h-3.5 text-text-secondary" strokeWidth={2} />
             </button>
             {openMenu === 'owner' && (
-              <DropdownList
-                items={owners}
+              <AssigneeOwnerList
+                extraOwners={owners}
                 onSelect={(val) => { onAssignOwner(val); setOpenMenu(null); }}
               />
             )}
@@ -98,7 +102,7 @@ export default function BulkActions({
             </button>
             {openMenu === 'state' && (
               <DropdownList
-                items={AUTH_STATES_WITH_ARCHIVED as unknown as string[]}
+                items={stateOptions}
                 onSelect={(val) => { onChangeState(val as AuthState); setOpenMenu(null); }}
               />
             )}
@@ -188,6 +192,14 @@ export default function BulkActions({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AssigneeOwnerList({ extraOwners, onSelect }: { extraOwners: string[]; onSelect: (val: string) => void }) {
+  return (
+    <div className="absolute bottom-full mb-2 left-0 overflow-hidden rounded-lg border border-outline bg-white shadow-lg z-30">
+      <AssigneePickerPanel selected={[]} extraIndividuals={extraOwners} onSelect={onSelect} />
     </div>
   );
 }

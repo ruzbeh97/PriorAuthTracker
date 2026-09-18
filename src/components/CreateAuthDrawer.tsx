@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, Check, ChevronDown, Plus, Trash2, X } from 'lucide-react';
 import type { AuthRecord, AuthState } from '../types';
-import { AUTH_STATES_WITH_ARCHIVED } from '../types';
+import { statesForAssignee, useAuthStateConfig } from '../authStates';
 import { mockAuthRecords } from '../data';
 import { formatAuthDateFromDate } from '../utils';
 
@@ -96,7 +96,6 @@ const CPT_OPTIONS = [
   '29881 — Arthroscopy, knee, surgical',
   '20610 — Arthrocentesis, major joint',
 ];
-const AUTH_STATE_OPTIONS: Array<{ value: AuthState; description?: string }> = AUTH_STATES_WITH_ARCHIVED.map((value) => ({ value }));
 
 function emptyCpt(): CreateAuthCpt {
   return {
@@ -203,6 +202,15 @@ interface CreateAuthDrawerProps {
 
 export default function CreateAuthDrawer({ open, onClose, onCreate, defaults }: CreateAuthDrawerProps) {
   const [form, setForm] = useState<CreateAuthForm>(() => initialForm(defaults));
+  const stateConfig = useAuthStateConfig();
+  // Only the states the assignee's group works, plus Archived as a manual escape hatch.
+  const authStateOptions: Array<{ value: AuthState; description?: string }> = [
+    ...statesForAssignee(stateConfig, form.assignedTo).map((state) => ({
+      value: state.name as AuthState,
+      description: state.description || undefined,
+    })),
+    { value: 'Archived' as AuthState },
+  ];
 
   useEffect(() => {
     if (open) setForm(initialForm(defaults));
@@ -356,7 +364,7 @@ export default function CreateAuthDrawer({ open, onClose, onCreate, defaults }: 
               required
               value={form.authState}
               placeholder="Select State"
-              options={AUTH_STATE_OPTIONS}
+              options={authStateOptions}
               onChange={(value) => update('authState', value as AuthState)}
             />
             <OutlineSelect

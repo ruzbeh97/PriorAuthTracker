@@ -9,7 +9,9 @@ export type AuthState =
   | 'Schedule Attempt 1'
   | 'Schedule Attempt 2'
   | 'Schedule Attempt 3'
-  | 'Archived';
+  | 'Archived'
+  // Preferences can define extra states per user group, so any label is valid.
+  | (string & {});
 
 export interface NoteEntry {
   id: string;
@@ -104,6 +106,7 @@ export function migrateAuthState(state: string): AuthState {
     case 'Archived':
       return 'Archived';
     default:
-      return 'Needs Authorization';
+      // Anything else is a state configured in Preferences; keep it as written.
+      return state.trim() || 'Needs Authorization';
   }
 }

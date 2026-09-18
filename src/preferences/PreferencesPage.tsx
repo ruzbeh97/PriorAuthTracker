@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
-import PreferencesSidebar from './components/PreferencesSidebar'
+import PreferencesSidebar, { type PreferenceItem } from './components/PreferencesSidebar'
 import TextSnippetsTable, { type TableRow } from './components/TextSnippetsTable'
 import AddTextSnippetPage from './components/AddTextSnippetPage'
-import { DEFAULT_ROWS } from './data/defaultSnippets'
+import PriorAuthPreferences from './components/PriorAuthPreferences'
+import UserGroupsPreferences from './components/UserGroupsPreferences'
 import { clearSnippetDraft, loadSnippetDraft } from './utils/snippetDraft'
+import { SNIPPETS_STORAGE_KEY, ensureSnippetsSeeded } from './utils/seedSnippets'
 import './preferences-embed.css'
 
 type View = 'table' | 'add' | 'edit'
-
-const SNIPPETS_STORAGE_KEY = 'charge-capture-text-snippets'
 
 const initialDraft = loadSnippetDraft()
 const initialView: View =
@@ -17,16 +17,7 @@ const initialEditingRowId =
   initialDraft?.view === 'edit' ? initialDraft.editingRowId : null
 
 function loadSavedRows(): TableRow[] {
-  try {
-    const saved = localStorage.getItem(SNIPPETS_STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved) as TableRow[]
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
-    }
-  } catch {
-    /* use defaults */
-  }
-  return DEFAULT_ROWS
+  return ensureSnippetsSeeded()
 }
 
 function saveRows(rows: TableRow[]) {
@@ -42,6 +33,7 @@ export default function PreferencesPage() {
   const [rows, setRows] = useState<TableRow[]>(loadSavedRows)
   const [editingRowId, setEditingRowId] = useState<string | null>(initialEditingRowId)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [activeItem, setActiveItem] = useState<PreferenceItem>('Text Snippets')
   // Only the session that was interrupted by a refresh may be restored from the draft.
   // Once the editor is left, the draft is stale and must not be replayed over a saved row.
   const [editorDraft, setEditorDraft] = useState(() => initialDraft)
@@ -102,7 +94,7 @@ export default function PreferencesPage() {
     persistRows(rows.filter(r => r.id !== rowId))
   }
 
-  const mainContent =
+  const snippetContent =
     view === 'table' ? (
       <TextSnippetsTable
         onAddClick={() => {
@@ -134,9 +126,24 @@ export default function PreferencesPage() {
       />
     )
 
+  const mainContent =
+    activeItem === 'Prior Authorization Tracker' ? (
+      <PriorAuthPreferences />
+    ) : activeItem === 'User Groups' ? (
+      <UserGroupsPreferences />
+    ) : (
+      snippetContent
+    )
+
   return (
     <div className="prefs-embed">
-      {isSidebarOpen && <PreferencesSidebar onClose={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && (
+        <PreferencesSidebar
+          onClose={() => setIsSidebarOpen(false)}
+          activeItem={activeItem}
+          onSelect={setActiveItem}
+        />
+      )}
       <div className="prefs-embed-main">{mainContent}</div>
     </div>
   )

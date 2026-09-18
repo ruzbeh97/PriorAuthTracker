@@ -1,11 +1,14 @@
-import { AUTH_STATES, type AuthState } from '../types';
+import { type AuthState } from '../types';
+import { useStateOptionsForAssignee } from '../authStates';
 
 interface StateSelectProps {
   value: AuthState;
+  assignedTo?: string;
   onChange: (val: AuthState) => void;
 }
 
-export default function StateSelect({ value, onChange }: StateSelectProps) {
+export default function StateSelect({ value, assignedTo = '', onChange }: StateSelectProps) {
+  const states = useStateOptionsForAssignee(assignedTo, value);
   return (
     <select
       value={value}
@@ -18,7 +21,7 @@ export default function StateSelect({ value, onChange }: StateSelectProps) {
       }}
     >
       <option value="" disabled>Select State</option>
-      {AUTH_STATES.map((s) => (
+      {states.map((s) => (
         <option key={s} value={s}>{s}</option>
       ))}
     </select>
