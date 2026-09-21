@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, useMemo, lazy, memo, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil, CheckCircle, ArrowRight, ExternalLink, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FileText, ArrowRightLeft, Edit3, User, Globe, History, Paperclip, Calendar, Upload, IdCard, PanelLeftOpen, PanelRightClose, Download, Search, Eye, Plus, Check, Trash2, MessageSquare, NotebookPen } from 'lucide-react';
 import type { AuthRecord, TimelineEntry } from '../types';
@@ -6,8 +6,7 @@ import { useStateOptionsForAssignee } from '../authStates';
 import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
 import { formatAuthDate, formatAuthDateFromDate, parseAuthDate } from '../utils';
-import { ASSIGNEE_INDIVIDUALS, useAssigneeGroups } from '../assignees';
-import { AssigneePickerPopover } from './AssigneePicker';
+import { ASSIGNEE_INDIVIDUALS } from '../assignees';
 
 const VisitNoteReadOnlyPanel = lazy(async () => {
   const { VisitNoteReadOnlyPanel: Panel } = await import('@visit-note/patient-chart');
@@ -193,19 +192,14 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     return [...new Set([...seed, ...fromRecords, record.facility].filter(Boolean))].sort();
   }, [allRecords, record.facility]);
 
-  const groupOptions = useAssigneeGroups();
   // States are configured per user group, so the list follows whoever owns this row.
   const stateOptions = useStateOptionsForAssignee(record.assignedTo, record.state);
 
   const assigneeOptions = useMemo(() => {
     const fromRecords = allRecords.flatMap((r) => (r.assignedTo ? r.assignedTo.split(', ').filter(Boolean) : []));
     const current = record.assignedTo ? record.assignedTo.split(', ').filter(Boolean) : [];
-    return [...new Set([
-      ...ASSIGNEE_INDIVIDUALS,
-      ...fromRecords.filter((name) => !groupOptions.includes(name)),
-      ...current.filter((name) => !groupOptions.includes(name)),
-    ])].sort();
-  }, [allRecords, record.assignedTo, groupOptions]);
+    return [...new Set([...ASSIGNEE_INDIVIDUALS, ...fromRecords, ...current])].sort();
+  }, [allRecords, record.assignedTo]);
 
   const payerOptions = useMemo(() => {
     const fromRecords = allRecords.map((r) => r.payer.name).filter(Boolean);
@@ -219,10 +213,19 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     }
   }, [portalUrl, portalOpen]);
 
+  // A custom order shows its whole template, which needs more room than a CPT list.
+  const customOrder = record.customOrder;
+  // The replayed template already shows the codes, so they don't repeat as detail rows.
+  const customOrderFields = (customOrder?.fields ?? []).filter(
+    (field) => !(customOrder?.templateHtml && CODE_FIELD_LABELS.has(field.label)),
+  );
+  const panelWidthClass = customOrder ? 'w-[760px]' : 'w-[440px]';
+  const bothWidthClass = customOrder ? 'w-[1200px]' : 'w-[880px]';
+
   return (
     <div className={`flex h-full ${separated ? 'gap-3' : 'bg-white border border-outline rounded-r-lg overflow-hidden'} ${tableCollapsed ? 'flex-1 min-w-0' : 'shrink-0'}`}>
 
-    <div className={`flex h-full overflow-hidden ${separated ? 'bg-white border border-outline rounded-lg' : ''} ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? 'w-[880px]' : 'w-[440px]'}`}>
+    <div className={`flex h-full overflow-hidden ${separated ? 'bg-white border border-outline rounded-lg' : ''} ${tableCollapsed ? 'flex-1 min-w-0' : portalOpen ? bothWidthClass : panelWidthClass}`}>
       {portalOpen && (
         <div className={`${tableCollapsed ? 'flex-1 min-w-0' : 'w-[440px] shrink-0'} flex flex-col border-r border-outline`}>
           <div className="flex items-center gap-2 px-3 py-2 border-b border-outline shrink-0">
@@ -278,7 +281,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
         </div>
       )}
 
-      <div className={`${tableCollapsed ? 'flex-1 min-w-0' : 'w-[440px] shrink-0'} flex flex-col overflow-hidden`}>
+      <div className={`${tableCollapsed ? 'flex-1 min-w-0' : `${panelWidthClass} shrink-0`} flex flex-col overflow-hidden`}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline shrink-0">
         <div className="flex items-center gap-3">
@@ -439,7 +442,10 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               onChange={(v) => commitDetail('End Date', formatAuthDate(record.endDate, '--'), v)}
               kind="date"
             />
-            {!record.orderBased && (
+            {customOrderFields.map((field) => (
+              <DetailRow key={field.label} label={field.label} value={field.value} />
+            ))}
+            {!record.orderBased && !customOrder && (
               <div className="flex items-center gap-2 py-0.5">
                 <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
                 <div className="flex items-center gap-2">
@@ -465,7 +471,9 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                 </div>
               </div>
             )}
-            {record.orderBased || trackingType === 'CPTs' ? (
+            {customOrder ? (
+              <CustomOrderBlock customOrder={customOrder} />
+            ) : record.orderBased || trackingType === 'CPTs' ? (
               <>
                 {cptEntries.map((entry) => (
                   <CptTrackingBlock
@@ -538,7 +546,6 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               value={record.assignedTo}
               onChange={(v) => commitDetail('Assigned To', record.assignedTo, v)}
               options={assigneeOptions}
-              groupOptions={groupOptions}
             />
             <EditableDetailRow
               label="Provider"
@@ -2096,6 +2103,101 @@ function AuthNotesField({ value, onChange }: { value: string; onChange: (value: 
   );
 }
 
+const CODE_FIELD_LABELS = new Set(['ICD-10 Code', 'CPT Code']);
+
+/**
+ * React rewrites innerHTML whenever the dangerouslySetInnerHTML object changes identity, so the
+ * replayed template is memoized to survive the panel's re-renders.
+ */
+const CustomOrderTemplate = memo(function CustomOrderTemplate({ html }: { html: string }) {
+  return (
+    <div
+      className="custom-order-template rounded-md border border-outline bg-white p-4"
+      // Built from our own template markup; user input is escaped when the snapshot is
+      // serialized in the order drawer.
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+});
+
+/** The prototype stores file names only, so a download hands back a stand-in document. */
+function downloadAttachment(name: string) {
+  const blob = new Blob(
+    [`${name}\n\nPlaceholder document. This prototype records attachment names only.\n`],
+    { type: 'text/plain' },
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * A custom order has no CPTs to track, so the authorization shows the template as it was
+ * filled out in the order drawer, plus whatever was attached there.
+ */
+function CustomOrderBlock({ customOrder }: { customOrder: NonNullable<AuthRecord['customOrder']> }) {
+  return (
+    <div className="flex flex-col gap-3 py-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary" strokeWidth={1.75} />
+          <span className="text-sm font-medium text-text-primary">
+            {customOrder.templateName || 'Custom order'}
+          </span>
+        </div>
+        {customOrder.templateHtml ? (
+          <CustomOrderTemplate html={customOrder.templateHtml} />
+        ) : (
+          <p className="text-sm text-text-secondary">This order was created without a template.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-text-primary">Attachments</span>
+          {customOrder.attachments.length > 1 && (
+            <button
+              type="button"
+              onClick={() => customOrder.attachments.forEach(downloadAttachment)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Download className="w-3.5 h-3.5" strokeWidth={1.75} />
+              Download all
+            </button>
+          )}
+        </div>
+        {customOrder.attachments.length === 0 ? (
+          <p className="text-sm text-text-secondary">No attachments from the order.</p>
+        ) : (
+          customOrder.attachments.map((name) => (
+            <div
+              key={name}
+              className="flex items-center gap-2 rounded-md border border-outline bg-white px-3 py-2"
+            >
+              <FileText className="w-4 h-4 shrink-0 text-primary" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{name}</span>
+              <button
+                type="button"
+                onClick={() => downloadAttachment(name)}
+                title={`Download ${name}`}
+                aria-label={`Download ${name}`}
+                className="flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-surface-variant"
+              >
+                <Download className="w-4 h-4 text-text-secondary" strokeWidth={1.5} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DetailRow({ label, value, copyable }: { label: string; value: string; copyable?: boolean }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
@@ -2189,13 +2291,12 @@ function AppointmentRow({ dateTime, authNumber, dateOptions, authOptions, onAuth
   );
 }
 
-function EditableDetailRow({ label, value, onChange, options, groupOptions, kind, placeholder }: {
+function EditableDetailRow({ label, value, onChange, options, kind, placeholder }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   copyable?: boolean;
   options?: string[];
-  groupOptions?: string[];
   kind?: 'text' | 'date';
   placeholder?: string;
 }) {
@@ -2220,7 +2321,7 @@ function EditableDetailRow({ label, value, onChange, options, groupOptions, kind
     <div className="flex items-center gap-2 py-0.5">
       <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">{label}</span>
       {options ? (
-        <EditableSelect value={value} onChange={onChange} options={options} groupOptions={groupOptions} />
+        <EditableSelect value={value} onChange={onChange} options={options} />
       ) : (
         <input
           type="text"
@@ -2364,22 +2465,17 @@ function EditableSelect({
   value,
   onChange,
   options,
-  groupOptions,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: string[];
-  groupOptions?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  // Assignee fields get the shared group/individual picker instead of a flat list.
-  const isAssignee = Boolean(groupOptions);
 
   useEffect(() => {
-    if (!open || isAssignee) return;
+    if (!open) return;
     const handle = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
@@ -2388,14 +2484,13 @@ function EditableSelect({
     };
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, [open, isAssignee]);
+  }, [open]);
 
   const filtered = options.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div ref={ref} className="relative flex-1 min-w-0">
       <button
-        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`flex w-full items-center gap-1 ${DETAIL_CONTROL}`}
@@ -2405,20 +2500,7 @@ function EditableSelect({
         </span>
         <ChevronDown className={`w-3.5 h-3.5 text-text-secondary shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
       </button>
-      {open && isAssignee ? (
-        <AssigneePickerPopover
-          anchorRef={triggerRef}
-          align="left"
-          selected={value ? value.split(', ').filter(Boolean) : []}
-          extraIndividuals={options}
-          onSelect={(name) => {
-            onChange(name);
-            setOpen(false);
-          }}
-          onDismiss={() => setOpen(false)}
-        />
-      ) : null}
-      {open && !isAssignee && (
+      {open && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline rounded shadow-lg overflow-hidden z-30">
           <div className="flex items-center gap-1.5 border-b border-outline px-2 py-1.5">
             <Search className="w-3 h-3 text-text-secondary shrink-0" strokeWidth={1.5} />

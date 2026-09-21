@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Archive, X, ChevronDown, MessageSquare, Trash2 } from 'lucide-react';
 import type { AuthState } from '../types';
 import { useAllStateNames } from '../authStates';
-import { AssigneePickerPanel } from './AssigneePicker';
 
 interface BulkActionsProps {
   selectedCount: number;
@@ -80,8 +79,8 @@ export default function BulkActions({
               <ChevronDown className="w-3.5 h-3.5 text-text-secondary" strokeWidth={2} />
             </button>
             {openMenu === 'owner' && (
-              <AssigneeOwnerList
-                extraOwners={owners}
+              <DropdownList
+                items={owners}
                 onSelect={(val) => { onAssignOwner(val); setOpenMenu(null); }}
               />
             )}
@@ -192,14 +191,6 @@ export default function BulkActions({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function AssigneeOwnerList({ extraOwners, onSelect }: { extraOwners: string[]; onSelect: (val: string) => void }) {
-  return (
-    <div className="absolute bottom-full mb-2 left-0 overflow-hidden rounded-lg border border-outline bg-white shadow-lg z-30">
-      <AssigneePickerPanel selected={[]} extraIndividuals={extraOwners} onSelect={onSelect} />
     </div>
   );
 }

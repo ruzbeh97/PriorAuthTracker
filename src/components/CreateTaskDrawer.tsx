@@ -2,8 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronDown, Search, X } from 'lucide-react';
 import { formatAuthDateFromDate } from '../utils';
-import { useAssigneeGroups } from '../assignees';
-import { AssigneePickerPopover } from './AssigneePicker';
 
 export type TaskPriority = 'Urgent' | 'High' | 'Medium' | 'Low' | 'No Priority';
 export type TaskStatus = 'Not Started' | 'Done';
@@ -74,7 +72,6 @@ interface CreateTaskDrawerProps {
 
 export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTaskDrawerProps) {
   const [form, setForm] = useState<CreateTaskForm>(emptyForm);
-  const groupOptions = useAssigneeGroups();
 
   useEffect(() => {
     if (open) setForm(emptyForm());
@@ -134,12 +131,13 @@ export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTask
               onChange={(value) => update('description', value)}
             />
 
-            <AssigneeOutlineField
+            <SearchableOutlineSelect
+              label="Assignee"
+              required
               value={form.assignee}
-              onSelect={(name) => {
-                update('assignee', name);
-                update('assignmentMode', groupOptions.includes(name) ? 'group' : 'individual');
-              }}
+              placeholder="Search and select a user"
+              options={USER_OPTIONS}
+              onChange={(value) => update('assignee', value)}
             />
 
             <SearchableOutlineSelect
@@ -213,48 +211,6 @@ export default function CreateTaskDrawer({ open, onClose, onCreate }: CreateTask
   );
 
   return createPortal(drawer, document.body);
-}
-
-/** Outlined field that opens the shared group/individual picker. */
-function AssigneeOutlineField({ value, onSelect }: { value: string; onSelect: (name: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  return (
-    <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-        className={`relative flex h-12 w-full items-center rounded-md border bg-white px-3.5 text-left ${
-          open ? 'border-[#1132ee]' : 'border-[#c4c4c4]'
-        }`}
-      >
-        <span className="absolute -top-2 left-3 bg-white px-1 text-[12px] leading-4 text-[#5f5f5f]">
-          Assignee
-          <span className="text-[#d32f2f]"> *</span>
-        </span>
-        <span className={`min-w-0 flex-1 truncate text-[14px] ${value ? 'text-[#1a1a1a]' : 'text-[#9e9e9e]'}`}>
-          {value || 'Search and select a group or user'}
-        </span>
-        <ChevronDown className="size-4 shrink-0 text-[#737373]" strokeWidth={1.75} />
-      </button>
-      {open ? (
-        <AssigneePickerPopover
-          anchorRef={triggerRef}
-          align="left"
-          selected={value ? [value] : []}
-          extraIndividuals={USER_OPTIONS}
-          onSelect={(name) => {
-            onSelect(name);
-            setOpen(false);
-          }}
-          onDismiss={() => setOpen(false)}
-        />
-      ) : null}
-    </div>
-  );
 }
 
 function OutlineInput({

@@ -121,4 +121,144 @@ body {
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* Replays an order manager template read-only, matching how it looks in the drawer. */
+  .custom-order-template {
+    font-size: 13px;
+    line-height: 24px;
+    color: #202020;
+  }
+
+  .custom-order-template :is(input, textarea, select, button) {
+    pointer-events: none;
+  }
+
+  .custom-order-template h1 {
+    margin-bottom: 12px;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .custom-order-template h2 {
+    margin-bottom: 8px;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .custom-order-template h3 {
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .custom-order-template ol {
+    list-style: decimal;
+    padding-left: 24px;
+  }
+
+  .custom-order-template ul {
+    list-style: disc;
+    padding-left: 24px;
+  }
+
+  .custom-order-template .tpl-section,
+  .custom-order-template .tpl-field {
+    margin-bottom: 20px;
+  }
+
+  .custom-order-template .tpl-heading {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  .custom-order-template textarea {
+    width: 100%;
+    resize: none;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+    background-color: #fff;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #202020;
+  }
+
+  .custom-order-template .tpl-vars {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .custom-order-template .tpl-chip {
+    display: inline-flex;
+    border-radius: 6px;
+    border: 1px solid #9bb3ff;
+    background-color: #e8eeff;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: #1132ee;
+  }
+
+  .custom-order-template .tpl-select {
+    position: relative;
+    margin-top: 12px;
+  }
+
+  .custom-order-template .tpl-select-label {
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    z-index: 10;
+    background-color: #fff;
+    padding: 0 4px;
+    font-size: 11px;
+    color: #8a8a8a;
+  }
+
+  .custom-order-template .tpl-select select {
+    height: 44px;
+    width: 100%;
+    appearance: none;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+    background-color: #fff;
+    padding: 0 32px 0 12px;
+    font-size: 13px;
+    color: #202020;
+  }
+
+  .custom-order-template .tpl-select::after {
+    content: '▾';
+    pointer-events: none;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: #666;
+  }
+
+  .custom-order-template .tpl-auth {
+    margin: 12px 0;
+  }
+
+  .custom-order-template .tpl-auth label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .custom-order-template .tpl-auth input {
+    width: 16px;
+    height: 16px;
+    accent-color: #1132ee;
+  }
+
+  .custom-order-template .tpl-auth span {
+    font-size: 14px;
+    color: #303030;
+  }
 }

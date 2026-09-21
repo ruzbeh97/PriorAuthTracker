@@ -77,6 +77,15 @@ export interface AuthRecord {
       value: string;
     }>;
   }>;
+  /** Present when this authorization came from a custom order built in the order manager. */
+  customOrder?: {
+    templateName: string;
+    /** The template markup as it was filled out, replayed read-only in the detail panel. */
+    templateHtml: string;
+    orderType: string;
+    fields: Array<{ label: string; value: string }>;
+    attachments: string[];
+  };
 }
 
 export const AUTH_STATES: AuthState[] = [

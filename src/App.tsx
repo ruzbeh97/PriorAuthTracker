@@ -172,12 +172,14 @@ type OrderAuthorizationEventDetail = {
       insurance: string;
     };
     provider: string;
+    facility?: string;
     caseName?: string;
     assignedTo?: string;
     authNumber?: string;
     startDate?: string;
     endDate?: string;
     authNotes?: string;
+    customOrder?: AuthRecord['customOrder'];
     orders: Array<{
       id: string;
       title: string;
@@ -257,9 +259,10 @@ export default function App() {
           visitsScheduled: previous?.visitsScheduled ?? 0,
           state: previous?.state ?? 'Needs Authorization',
           status: previous?.status ?? 'Needs Auth',
-          facility: previous?.facility ?? 'MAIN OFFICE',
+          facility: group.facility || previous?.facility || 'MAIN OFFICE',
           provider: group.provider,
           caseName: group.caseName,
+          customOrder: group.customOrder ?? previous?.customOrder,
           assignedTo: group.assignedTo?.trim() || previous?.assignedTo || 'Unassigned',
           tags: previous?.tags?.length ? previous.tags : ['ORDER AUTHORIZATION'],
           notes: previous?.notes ?? [],

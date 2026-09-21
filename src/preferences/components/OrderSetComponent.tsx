@@ -4,7 +4,6 @@ import Dropdown from './Dropdown'
 import { ORDER_SETS, INDIVIDUAL_ORDERS, getOrderDetails, inferOrderCategory, type OrderCategory } from '../data/snippetOrders'
 import { getOrderPreconfig } from '../data/orderPreconfig'
 import type { OrderDiagnosisMap } from '../data/snippetServices'
-import { useAssigneeGroups } from '../../assignees'
 
 interface OrderSetComponentProps {
   onRemove?: () => void
@@ -817,7 +816,6 @@ function VisitNoteOrderDetail({
   const [orderTitle, setOrderTitle] = useState(isProcedure ? '' : details.description)
   const [requiresAuth, setRequiresAuth] = useState(false)
   const [assignedTo, setAssignedTo] = useState('')
-  const groupOptions = useAssigneeGroups()
   const [inHouse, setInHouse] = useState(true)
   const [contactSource, setContactSource] = useState<'NPI' | 'Contact List'>('NPI')
   const [sig, setSig] = useState('')
@@ -901,7 +899,6 @@ function VisitNoteOrderDetail({
                   value={assignedTo}
                   onChange={setAssignedTo}
                   options={ASSIGNEE_OPTIONS}
-                  groupOptions={groupOptions}
                   disabled={disabled}
                 />
               </div>
