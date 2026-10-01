@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PROTOTYPE_VERSIONS, usePrototypeVersion } from '../prototypeVersion';
 import {
   BarChart3,
   Calendar,
@@ -95,6 +96,34 @@ function AirLogo() {
         />
       </svg>
       <span className="text-[17px] font-bold tracking-tight text-shell-fg">Air</span>
+    </div>
+  );
+}
+
+function PrototypeVersionChips() {
+  const { version, setVersion } = usePrototypeVersion();
+
+  return (
+    <div role="radiogroup" aria-label="Prototype version" className="flex items-center gap-1 pb-2">
+      {PROTOTYPE_VERSIONS.map((entry) => {
+        const selected = entry === version;
+        return (
+          <button
+            key={entry}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => setVersion(entry)}
+            className={`inline-flex h-6 flex-1 items-center justify-center rounded-full text-[11px] font-medium transition-colors ${
+              selected
+                ? 'bg-primary text-white'
+                : 'border border-black/15 bg-white text-shell-fg hover:bg-black/5'
+            }`}
+          >
+            {entry}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -262,6 +291,7 @@ export default function Sidebar({ collapsed, activePage, onPageChange, onExpand 
       </nav>
 
       <div className="mt-auto px-2 pb-2">
+        <PrototypeVersionChips />
         <div className="border-t border-black/10 pt-2 flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-semibold shrink-0">
             RI

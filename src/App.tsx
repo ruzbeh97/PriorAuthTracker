@@ -39,6 +39,7 @@ const VisitsPage = lazy(() => import('./visits/VisitsPage'));
 const PreferencesPage = lazy(() => import('./preferences/PreferencesPage'));
 
 const ORDER_AUTHORIZATIONS_EVENT = 'patient-chart:order-authorizations';
+const AUTH_SERVICE_UNITS_EVENT = 'patient-chart:auth-service-units';
 const ORDER_AUTH_STATE_EVENT = 'patient-chart:order-auth-state';
 const ORDER_AUTH_STORAGE_KEY = 'prior-auth:order-records';
 const PATIENT_AUTH_NUMBERS_KEY = 'prior-auth:patient-auth-numbers';
@@ -96,13 +97,36 @@ function publishAuthTimelines(records: AuthRecord[]) {
   window.dispatchEvent(new CustomEvent(AUTH_TIMELINE_EVENT, { detail: snapshot }));
 }
 
+function tagsChosenByUser(record: AuthRecord): boolean {
+  return (record.timeline ?? []).some(
+    (entry) => entry.action.kind === 'detail_changed' && entry.action.field === 'Tags',
+  );
+}
+
+// Visit-note authorizations start with no tag. A tag that was only the old automatic
+// default is dropped unless someone chose it and saved.
+function tagsForOrderAuth(previous: AuthRecord | undefined): string[] {
+  if (!previous?.tags?.length) return [];
+  const automaticOnly =
+    previous.tags.length === 1 &&
+    previous.tags[0] === 'ORDER AUTHORIZATION' &&
+    !tagsChosenByUser(previous);
+  return automaticOnly ? [] : previous.tags;
+}
+
 // No backend in the prototype, so order-driven rows persist across refreshes locally.
 function loadStoredOrderAuthRecords(): AuthRecord[] {
   try {
     const raw = window.localStorage.getItem(ORDER_AUTH_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     return Array.isArray(parsed)
-      ? (parsed as AuthRecord[]).map((record) => ({ ...record, state: migrateAuthState(record.state) }))
+      ? (parsed as AuthRecord[]).map((record) => ({
+          ...record,
+          state: migrateAuthState(record.state),
+          tags: tagsForOrderAuth(record),
+          serviceUnitsCompleted: (record.serviceUnitsCompleted ?? 0) + (record.serviceUnitsScheduled ?? 0),
+          serviceUnitsScheduled: 0,
+        }))
       : [];
   } catch {
     return [];
@@ -163,6 +187,7 @@ function publishOrderAuthState(record: AuthRecord) {
 
 type OrderAuthorizationEventDetail = {
   source?: string;
+  visitNoteId?: string;
   groups: Array<{
     id: string;
     patient: {
@@ -210,6 +235,26 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('Prior Auth Tracker 2');
   const [orderAuthRecords, setOrderAuthRecords] = useState<AuthRecord[]>(loadStoredOrderAuthRecords);
+
+  useEffect(() => {
+    setOrderAuthRecords((current) => {
+      let changed = false;
+      const next = current.map((record) => {
+        const tags = tagsForOrderAuth(record);
+        const scheduled = record.serviceUnitsScheduled ?? 0;
+        const tagsSame = tags.length === record.tags.length && tags.every((tag, index) => tag === record.tags[index]);
+        if (tagsSame && scheduled === 0) return record;
+        changed = true;
+        return {
+          ...record,
+          tags,
+          serviceUnitsCompleted: (record.serviceUnitsCompleted ?? 0) + scheduled,
+          serviceUnitsScheduled: 0,
+        };
+      });
+      return changed ? next : current;
+    });
+  }, []);
   const [tasks, setTasks] = useState<TaskRow[]>(INITIAL_TASKS);
   const [detailHeaderInfo, setDetailHeaderInfo] = useState<{ patientName: string; authNumber: string; index: number; total: number } | null>(null);
   const navigateRecordRef = useRef<((dir: 'prev' | 'next') => void) | null>(null);
@@ -238,7 +283,7 @@ export default function App() {
 
   useEffect(() => {
     function syncOrderAuthorizations(event: Event) {
-      const { groups, source = 'visit-note' } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
+      const { groups, source = 'visit-note', visitNoteId } = (event as CustomEvent<OrderAuthorizationEventDetail>).detail;
       const previousRecords = orderAuthRecordsRef.current;
       const sourceRecords: AuthRecord[] = groups.map((group) => {
         const id = `order-auth-${source}-${group.id}`;
@@ -264,13 +309,14 @@ export default function App() {
           caseName: group.caseName,
           customOrder: group.customOrder ?? previous?.customOrder,
           assignedTo: group.assignedTo?.trim() || previous?.assignedTo || 'Unassigned',
-          tags: previous?.tags?.length ? previous.tags : ['ORDER AUTHORIZATION'],
+          tags: tagsForOrderAuth(previous),
           notes: previous?.notes ?? [],
           timeline: previous?.timeline,
           authNotes: group.authNotes || previous?.authNotes,
           orderBased: true,
           orderSource: source,
           orderGroupId: group.id,
+          visitNoteId: visitNoteId || previous?.visitNoteId,
           orderCpts: group.orders.map((order) => ({
             orderId: order.id,
             orderTitle: order.title,
@@ -279,6 +325,10 @@ export default function App() {
             units: order.units,
             details: order.details,
           })),
+          approvedUnitEntries: previous?.approvedUnitEntries,
+          trackingMode: previous?.trackingMode,
+          serviceUnitsScheduled: previous?.serviceUnitsScheduled,
+          serviceUnitsCompleted: previous?.serviceUnitsCompleted,
         };
       });
       for (const record of sourceRecords) {
@@ -303,6 +353,23 @@ export default function App() {
     }
     window.addEventListener(OPEN_CREATE_AUTH_EVENT, openCreateAuth);
     return () => window.removeEventListener(OPEN_CREATE_AUTH_EVENT, openCreateAuth);
+  }, []);
+
+  useEffect(() => {
+    function applyServiceUnits(event: Event) {
+      const detail = (event as CustomEvent<{ authId?: string; scheduled?: number; completed?: number }>).detail;
+      if (!detail?.authId) return;
+      const completed = (detail.completed ?? 0) + (detail.scheduled ?? 0);
+      setOrderAuthRecords((current) =>
+        current.map((record) =>
+          record.id === detail.authId
+            ? { ...record, serviceUnitsScheduled: 0, serviceUnitsCompleted: completed }
+            : record,
+        ),
+      );
+    }
+    window.addEventListener(AUTH_SERVICE_UNITS_EVENT, applyServiceUnits);
+    return () => window.removeEventListener(AUTH_SERVICE_UNITS_EVENT, applyServiceUnits);
   }, []);
 
   useEffect(() => {
@@ -553,10 +620,22 @@ export default function App() {
           case 'Facility': updated.facility = to; break;
           case 'Start Date': updated.startDate = to; break;
           case 'End Date': updated.endDate = to; break;
-          case 'Payer': updated.payer = { ...r.payer, name: to }; break;
+          case 'Payer':
+          case 'Insurance': updated.payer = { ...r.payer, name: to }; break;
+          case 'Tags': updated.tags = to ? [to] : []; break;
           case 'State': updated.state = migrateAuthState(to); break;
           case 'Visits Authorized': updated.visitsAuthorized = parseInt(to, 10) || 0; break;
           case 'Auth Notes': updated.authNotes = to; break;
+          case 'Tracking Type':
+            if (to === 'Visits' || to === 'CPTs') updated.trackingMode = to;
+            break;
+          case 'Approved Units':
+            try {
+              updated.approvedUnitEntries = JSON.parse(to) as AuthRecord['approvedUnitEntries'];
+            } catch {
+              // Ignore a malformed units payload; the previous allowance stays in place.
+            }
+            break;
         }
         return updated;
       })

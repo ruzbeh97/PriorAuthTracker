@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
+import { PrototypeVersionProvider } from './prototypeVersion'
 import { ensureSnippetsSeeded } from './preferences/utils/seedSnippets'
 import { ensureUserGroupsSeeded } from './assignees'
 import { ensureAuthStatesSeeded } from './authStates'
@@ -14,6 +15,8 @@ ensureAuthStatesSeeded()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <PrototypeVersionProvider>
+      <App />
+    </PrototypeVersionProvider>
   </StrictMode>,
 )

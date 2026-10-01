@@ -66,6 +66,8 @@ export interface AuthRecord {
   orderBased?: boolean;
   orderSource?: string;
   orderGroupId?: string;
+  /** Visit note the orders were placed on. */
+  visitNoteId?: string;
   orderCpts?: Array<{
     orderId: string;
     orderTitle: string;
@@ -77,6 +79,18 @@ export interface AuthRecord {
       value: string;
     }>;
   }>;
+  /** Units entered on the approved-CPT blocks. Order rows use their sum as Available. */
+  approvedUnitEntries?: Array<{
+    id: string;
+    units: string;
+    code?: string;
+    unitTrackingType?: string;
+  }>;
+  /** Visits or CPT tracking chosen in the detail panel. */
+  trackingMode?: 'Visits' | 'CPTs';
+  /** Units entered on visit-note services for appointments linked to this authorization. */
+  serviceUnitsScheduled?: number;
+  serviceUnitsCompleted?: number;
   /** Present when this authorization came from a custom order built in the order manager. */
   customOrder?: {
     templateName: string;

@@ -7,6 +7,7 @@ import UtilizationBar from './UtilizationBar';
 import CopyButton from './CopyButton';
 import { formatAuthDate, formatAuthDateFromDate, parseAuthDate } from '../utils';
 import { ASSIGNEE_INDIVIDUALS } from '../assignees';
+import { usePrototypeVersion } from '../prototypeVersion';
 
 const VisitNoteReadOnlyPanel = lazy(async () => {
   const { VisitNoteReadOnlyPanel: Panel } = await import('@visit-note/patient-chart');
@@ -77,8 +78,13 @@ interface PendingReassignment {
 }
 
 export default function AuthDetailPanel({ record, allRecords, onClose, onReassignVisit, onDetailChange, onAddNote, onDeleteNote, tableCollapsed, onExpandTable, separated = false }: AuthDetailPanelProps) {
+  const isP00 = usePrototypeVersion().version === 'P00';
   const visitsRemaining = record.visitsAuthorized - record.visitsCompleted;
   const unscheduled = Math.max(0, visitsRemaining - record.visitsScheduled);
+  const approvedUnits = (record.approvedUnitEntries ?? []).reduce(
+    (sum, entry) => sum + (parseInt(entry.units, 10) || 0),
+    0,
+  );
 
   const [completedAppts, setCompletedAppts] = useState<ExceededAppt[]>([]);
   const [scheduledAppts, setScheduledAppts] = useState<ExceededAppt[]>([]);
@@ -125,19 +131,54 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     } else {
       setScheduledAppts([]);
     }
-    setTrackingType(record.orderBased ? 'CPTs' : 'Visits');
-    setCptEntries(
+    setTrackingType(record.trackingMode ?? (record.orderBased ? 'CPTs' : 'Visits'));
+    const blankVisitNoteUnits = isP00 && record.orderSource === 'visit-note';
+    const savedUnits = new Map((record.approvedUnitEntries ?? []).map((entry) => [entry.id, entry]));
+    const fromOrders =
       record.orderBased && record.orderCpts?.length
-        ? record.orderCpts.map((entry) => ({
-            id: `cpt-${entry.orderId}`,
-            code: entry.code,
-            unitTrackingType: entry.trackingType,
+        ? record.orderCpts.map((entry) => {
+            const id = `cpt-${entry.orderId}`;
+            const saved = savedUnits.get(id);
+            return {
+              id,
+              code: blankVisitNoteUnits ? (saved?.code ?? '') : (saved?.code || entry.code),
+              unitTrackingType: saved?.unitTrackingType || entry.trackingType,
+              units: blankVisitNoteUnits ? (saved?.units ?? '') : (saved?.units || entry.units),
+              details: entry.details,
+            };
+          })
+        : [];
+    const extraUnits = blankVisitNoteUnits
+      ? (record.approvedUnitEntries ?? [])
+          .filter((entry) => !fromOrders.some((row) => row.id === entry.id))
+          .map((entry) => ({
+            id: entry.id,
+            code: entry.code ?? '',
+            unitTrackingType: entry.unitTrackingType || 'Units',
             units: entry.units,
-            details: entry.details,
           }))
-        : [emptyCptEntry()],
-    );
+      : [];
+    setCptEntries(fromOrders.length || extraUnits.length ? [...fromOrders, ...extraUnits] : [emptyCptEntry()]);
   }
+
+  useEffect(() => {
+    const syncCptUnits =
+      isP00 &&
+      !record.customOrder &&
+      (record.orderSource === 'visit-note' || record.orderBased || trackingType === 'CPTs');
+    if (!syncCptUnits) return;
+    const next = cptPayload(cptEntries);
+    const previous = cptPayload(
+      (record.approvedUnitEntries ?? []).map((entry) => ({
+        id: entry.id,
+        code: entry.code ?? '',
+        unitTrackingType: entry.unitTrackingType || 'Units',
+        units: entry.units,
+      })),
+    );
+    if (next === previous) return;
+    onDetailChange(record.id, 'Approved Units', '', next, { silent: true });
+  }, [cptEntries, isP00, onDetailChange, record.approvedUnitEntries, record.customOrder, record.id, record.orderBased, record.orderSource, trackingType]);
 
   const pastDateOptions = generateExceededAppointments(8, 3, 20);
   const patientAuths = allRecords
@@ -170,10 +211,37 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     });
   }
 
+  function changeTrackingType(next: 'Visits' | 'CPTs') {
+    if (next === trackingType) return;
+    setTrackingType(next);
+    commitDetail('Tracking Type', record.trackingMode ?? trackingType, next);
+  }
+
+  function replaceCptEntries(next: CptEntry[]) {
+    setCptEntries(next);
+    commitDetail('Approved Units', cptPayload(cptEntries), cptPayload(next));
+  }
+
   function revertChanges() {
     [...pendingEdits]
       .reverse()
-      .forEach((edit) => onDetailChange(record.id, edit.field, edit.to, edit.from, { silent: true }));
+      .forEach((edit) => {
+        if (edit.field === 'Tracking Type' && (edit.from === 'Visits' || edit.from === 'CPTs')) {
+          setTrackingType(edit.from);
+        }
+        if (edit.field === 'Approved Units') {
+          const restored = entriesFromPayload(edit.from);
+          if (restored) {
+            setCptEntries(
+              restored.map((entry) => ({
+                ...entry,
+                details: cptEntries.find((current) => current.id === entry.id)?.details,
+              })),
+            );
+          }
+        }
+        onDetailChange(record.id, edit.field, edit.to, edit.from, { silent: true });
+      });
     setPendingEdits([]);
     setPendingReassignments([]);
   }
@@ -206,6 +274,13 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
     return [...new Set([...PAYER_OPTIONS, ...fromRecords, record.payer.name].filter(Boolean))].sort();
   }, [allRecords, record.payer.name]);
 
+  const tagOptions = useMemo(() => {
+    const fromRecords = allRecords.flatMap((entry) => entry.tags);
+    return [...new Set([...fromRecords, ...record.tags, 'ORDER AUTHORIZATION', 'WC AUTHORIZATION', 'CPT AUTHORIZATION'])]
+      .filter(Boolean)
+      .sort();
+  }, [allRecords, record.tags]);
+
   useEffect(() => {
     if (portalOpen) {
       setPortalCurrentUrl(portalUrl);
@@ -215,6 +290,9 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
 
   // A custom order shows its whole template, which needs more room than a CPT list.
   const customOrder = record.customOrder;
+  const fromVisitNote = record.orderSource === 'visit-note';
+  // CPT panels share the visit-note field order. Request details stay on note-sourced auths.
+  const cptPanel = isP00 && !customOrder && (fromVisitNote || record.orderBased || trackingType === 'CPTs');
   // The replayed template already shows the codes, so they don't repeat as detail rows.
   const customOrderFields = (customOrder?.fields ?? []).filter(
     (field) => !(customOrder?.templateHtml && CODE_FIELD_LABELS.has(field.label)),
@@ -333,6 +411,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
           </button>
           <span className="w-px h-7 bg-outline" />
           <button
+            type="button"
             disabled={!hasPendingChanges}
             onClick={() => {
               if (!hasPendingChanges) return;
@@ -381,7 +460,10 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
             </div>
           }
         >
-          <VisitNoteReadOnlyPanel />
+          <VisitNoteReadOnlyPanel
+            noteId={record.visitNoteId}
+            orderIds={(record.orderCpts ?? []).map((order) => order.orderId)}
+          />
         </Suspense>
       ) : (
       <div className="flex-1 overflow-y-auto py-4">
@@ -416,6 +498,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
           </div>
 
           <div className="flex flex-col gap-1">
+            {cptPanel && <AuthTypeField />}
             <EditableDetailRow
               label="Authorization Number"
               value={record.authNumber}
@@ -424,12 +507,22 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               copyable={!!record.authNumber}
             />
             <EditableDetailRow
-              label="Payer"
+              label={cptPanel ? 'Insurance' : 'Payer'}
               value={record.payer.name}
-              onChange={(v) => commitDetail('Payer', record.payer.name, v)}
+              onChange={(v) =>
+                commitDetail(
+                  cptPanel ? 'Insurance' : 'Payer',
+                  record.payer.name,
+                  v,
+                )
+              }
               options={payerOptions}
             />
-            <DetailRow label="Payer ID" value={`${record.payer.name}IL: ${record.payer.planId}`} copyable />
+            <DetailRow
+              label={cptPanel ? 'Insurance ID' : 'Payer ID'}
+              value={`${record.payer.name}IL: ${record.payer.planId}`}
+              copyable
+            />
             <EditableDetailRow
               label="Start Date"
               value={formatAuthDate(record.startDate, '--')}
@@ -442,10 +535,22 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
               onChange={(v) => commitDetail('End Date', formatAuthDate(record.endDate, '--'), v)}
               kind="date"
             />
+            {cptPanel && (
+              <AuthWorkflowFields
+                variant="visit-note"
+                record={record}
+                stateOptions={stateOptions}
+                assigneeOptions={assigneeOptions}
+                providerOptions={providerOptions}
+                facilityOptions={facilityOptions}
+                tagOptions={tagOptions}
+                onCommit={commitDetail}
+              />
+            )}
             {customOrderFields.map((field) => (
               <DetailRow key={field.label} label={field.label} value={field.value} />
             ))}
-            {!record.orderBased && !customOrder && (
+            {!cptPanel && !record.orderBased && !customOrder && (
               <div className="flex items-center gap-2 py-0.5">
                 <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
                 <div className="flex items-center gap-2">
@@ -455,7 +560,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                       <button
                         key={t}
                         type="button"
-                        onClick={() => setTrackingType(t)}
+                        onClick={() => changeTrackingType(t)}
                         className={`inline-flex items-center rounded-md px-3 py-1 text-sm transition-colors ${
                           selected
                             ? t === 'Visits'
@@ -473,6 +578,61 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
             )}
             {customOrder ? (
               <CustomOrderBlock customOrder={customOrder} />
+            ) : cptPanel ? (
+              <>
+                {fromVisitNote && (
+                  <AuthorizationRequestDetails
+                    orders={record.orderCpts ?? []}
+                    onOpenVisitNote={() => setActiveAction('visit-note')}
+                  />
+                )}
+                <div className="mt-6 flex flex-col gap-1">
+                  <h3 className="pb-1.5 text-base font-medium leading-6 text-text-primary">
+                    Authorizations Approved
+                  </h3>
+                  <TrackingTypeField value={trackingType} onChange={changeTrackingType} />
+                </div>
+                {trackingType === 'Visits' ? (
+                  <>
+                    <EditableDetailRow
+                      label="Visits Authorized"
+                      value={String(record.visitsAuthorized)}
+                      onChange={(v) => commitDetail('Visits Authorized', String(record.visitsAuthorized), v)}
+                    />
+                    <DetailRow label="Visits Completed" value={String(record.visitsCompleted)} />
+                    <DetailRow label="Scheduled Visits" value={String(record.visitsScheduled)} />
+                    <DetailRow label="Remaining Visits" value={visitsRemaining > 0 ? `${visitsRemaining} (${unscheduled} unscheduled)` : '0'} />
+                  </>
+                ) : (
+                  <>
+                    {cptEntries.map((entry) => (
+                      <CptTrackingBlock
+                        key={entry.id}
+                        entry={entry}
+                        codeOptions={orderCptOptions}
+                        onChange={(next) =>
+                          replaceCptEntries(cptEntries.map((e) => (e.id === entry.id ? next : e)))
+                        }
+                        onDelete={() => {
+                          const remaining = cptEntries.filter((e) => e.id !== entry.id);
+                          replaceCptEntries(remaining.length > 0 ? remaining : [emptyCptEntry()]);
+                        }}
+                      />
+                    ))}
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => replaceCptEntries([...cptEntries, emptyCptEntry()])}
+                        className="p-1 text-text-primary hover:text-primary transition-colors"
+                        title="Add CPT"
+                        aria-label="Add CPT"
+                      >
+                        <Plus className="w-5 h-5" strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
             ) : record.orderBased || trackingType === 'CPTs' ? (
               <>
                 {cptEntries.map((entry) => (
@@ -482,21 +642,19 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                     codeOptions={orderCptOptions}
                     showOrderDetails={record.orderSource === 'visit-note'}
                     onChange={(next) =>
-                      setCptEntries((prev) => prev.map((e) => (e.id === entry.id ? next : e)))
+                      replaceCptEntries(cptEntries.map((e) => (e.id === entry.id ? next : e)))
                     }
-                    onDelete={() =>
-                      setCptEntries((prev) => {
-                        const remaining = prev.filter((e) => e.id !== entry.id);
-                        return remaining.length > 0 ? remaining : [emptyCptEntry()];
-                      })
-                    }
+                    onDelete={() => {
+                      const remaining = cptEntries.filter((e) => e.id !== entry.id);
+                      replaceCptEntries(remaining.length > 0 ? remaining : [emptyCptEntry()]);
+                    }}
                   />
                 ))}
                 {!record.orderBased && (
                   <div className="flex justify-end pt-1">
                     <button
                       type="button"
-                      onClick={() => setCptEntries((prev) => [...prev, emptyCptEntry()])}
+                      onClick={() => replaceCptEntries([...cptEntries, emptyCptEntry()])}
                       className="p-0 text-primary hover:text-primary-hover transition-colors"
                       title="Add CPT"
                     >
@@ -526,46 +684,33 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                 )}
               </>
             )}
-            <div className="flex items-start gap-2 py-0.5">
-              <span className="w-[150px] shrink-0 pt-1.5 text-sm leading-[22px] text-accent-700">Auth Notes</span>
-              <AuthNotesField
-                value={record.authNotes ?? ''}
-                onChange={(value) => commitDetail('Auth Notes', record.authNotes ?? '', value)}
+            {!cptPanel && (
+              <AuthWorkflowFields
+                record={record}
+                stateOptions={stateOptions}
+                assigneeOptions={assigneeOptions}
+                providerOptions={providerOptions}
+                facilityOptions={facilityOptions}
+                onCommit={commitDetail}
               />
-            </div>
-            <div className="flex items-start gap-2 py-1">
-              <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
-              <EditableSelect
-                value={record.state}
-                onChange={(value) => commitDetail('State', record.state, value)}
-                options={stateOptions}
-              />
-            </div>
-            <EditableDetailRow
-              label="Assigned To"
-              value={record.assignedTo}
-              onChange={(v) => commitDetail('Assigned To', record.assignedTo, v)}
-              options={assigneeOptions}
-            />
-            <EditableDetailRow
-              label="Provider"
-              value={record.provider}
-              onChange={(v) => commitDetail('Provider', record.provider, v)}
-              options={providerOptions}
-            />
-            <EditableDetailRow
-              label="Facility"
-              value={record.facility}
-              onChange={(v) => commitDetail('Facility', record.facility, v)}
-              options={facilityOptions}
-            />
+            )}
           </div>
         </div>
 
         {/* Divider */}
         <div className="my-3 border-t border-outline" />
 
-        {record.orderBased ? (
+        {record.orderBased && isP00 ? (
+          <div className="px-4">
+            <p className="text-sm font-medium text-text-primary mb-2">Utilization</p>
+            <UtilizationBar
+              layout="row"
+              authorized={approvedUnits}
+              completed={record.serviceUnitsCompleted ?? 0}
+              scheduled={record.serviceUnitsScheduled ?? 0}
+            />
+          </div>
+        ) : record.orderBased ? (
           <div className="px-4">
             <p className="text-sm font-medium text-text-primary mb-2">CPT Codes</p>
             <div className="flex flex-wrap gap-1.5">
@@ -1893,6 +2038,32 @@ function emptyCptEntry(): CptEntry {
   return { id: `cpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, code: '', unitTrackingType: 'Units', units: '' };
 }
 
+function cptPayload(entries: Array<Pick<CptEntry, 'id' | 'code' | 'unitTrackingType' | 'units'>>): string {
+  return JSON.stringify(
+    entries.map((entry) => ({
+      id: entry.id,
+      code: entry.code,
+      unitTrackingType: entry.unitTrackingType,
+      units: entry.units,
+    })),
+  );
+}
+
+function entriesFromPayload(payload: string): CptEntry[] | null {
+  try {
+    const parsed = JSON.parse(payload) as Array<Pick<CptEntry, 'id' | 'code' | 'unitTrackingType' | 'units'>>;
+    if (!Array.isArray(parsed)) return null;
+    return parsed.map((entry) => ({
+      id: entry.id,
+      code: entry.code ?? '',
+      unitTrackingType: entry.unitTrackingType || 'Units',
+      units: entry.units ?? '',
+    }));
+  } catch {
+    return null;
+  }
+}
+
 function CptFieldSelect({
   value,
   placeholder,
@@ -1982,6 +2153,361 @@ function CptFieldSelect({
   );
 }
 
+// A block can track several codes; they live in `code` as a comma-separated list so the
+// saved approved-unit payload and existing single-code rows keep working.
+function splitCptCodes(code: string): string[] {
+  return [...new Set(code.split(',').map((part) => part.trim()).filter(Boolean))];
+}
+
+function joinCptCodes(codes: string[]): string {
+  return [...new Set(codes)].join(', ');
+}
+
+function CptMultiSelect({
+  values,
+  placeholder,
+  options,
+  onChange,
+}: {
+  values: string[];
+  placeholder: string;
+  options: CptSelectOption[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const q = search.toLowerCase();
+  const filtered = options.filter(
+    (o) => o.value.toLowerCase().includes(q) || (o.description?.toLowerCase().includes(q) ?? false),
+  );
+  const selected = new Set(values);
+
+  function toggle(code: string) {
+    onChange(selected.has(code) ? values.filter((value) => value !== code) : [...values, code]);
+  }
+
+  return (
+    <div ref={ref} className="relative w-full min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full h-7 flex items-center justify-between gap-1 px-1.5 py-0.5 rounded-lg bg-surface-variant"
+      >
+        <span className={`text-sm truncate ${values.length ? 'text-text-primary' : 'text-[#808080]'}`}>
+          {values.length === 0
+            ? placeholder
+            : values.length === 1
+              ? `1 CPT code selected`
+              : `${values.length} CPT codes selected`}
+        </span>
+        <ChevronDown className={`w-[18px] h-[18px] text-text-secondary shrink-0 ${open ? 'rotate-180' : ''}`} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline rounded-lg shadow-lg overflow-hidden z-30">
+          <div className="flex items-center gap-1.5 border-b border-outline px-2 py-1.5">
+            <Search className="w-3 h-3 text-text-secondary shrink-0" strokeWidth={1.5} />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="flex-1 min-w-0 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none bg-transparent"
+            />
+          </div>
+          <div className="max-h-[200px] overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-text-secondary">No matches</div>
+            ) : (
+              filtered.map((opt) => {
+                const isSelected = selected.has(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => toggle(opt.value)}
+                    className={`flex w-full items-start gap-2 text-left px-2 py-1.5 transition-colors ${
+                      isSelected ? 'bg-primary/5 text-primary' : 'text-text-primary hover:bg-surface-variant'
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border ${
+                        isSelected ? 'border-primary bg-primary text-white' : 'border-outline bg-white'
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3" strokeWidth={2.5} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">{opt.value}</span>
+                      {opt.description && (
+                        <span className={`block text-xs mt-0.5 ${isSelected ? 'text-primary/80' : 'text-text-secondary'}`}>
+                          {opt.description}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrackingTypeField({
+  value,
+  onChange,
+}: {
+  value: 'Visits' | 'CPTs';
+  onChange: (next: 'Visits' | 'CPTs') => void;
+}) {
+  const options = [
+    { id: 'Visits' as const, label: 'Visits' },
+    { id: 'CPTs' as const, label: 'CPT' },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Tracking Type</span>
+      <div role="radiogroup" aria-label="Tracking Type" className="flex items-center gap-2">
+        {options.map((option) => {
+          const selected = value === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.id)}
+              className={`inline-flex h-7 items-center rounded-full px-3 text-sm font-medium ${
+                selected ? 'bg-[#e8ebfb] text-primary' : 'bg-[#f2f2f2] text-[#8a8a8a]'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Visit-note requests are always pre-certifications, so Referral stays disabled. */
+function AuthTypeField() {
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Auth Type</span>
+      <div role="radiogroup" aria-label="Auth Type" className="flex items-center gap-3">
+        <button
+          type="button"
+          role="radio"
+          aria-checked
+          className="inline-flex h-7 items-center rounded-full bg-[#e8ebfb] px-3 text-sm font-medium text-primary"
+        >
+          Pre-Certification
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={false}
+          disabled
+          className="inline-flex h-7 cursor-not-allowed items-center rounded-full bg-[#f2f2f2] px-3 text-sm font-medium text-text-disabled"
+        >
+          Referral
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AuthWorkflowFields({
+  record,
+  stateOptions,
+  assigneeOptions,
+  providerOptions,
+  facilityOptions,
+  tagOptions = [],
+  variant = 'default',
+  onCommit,
+}: {
+  record: AuthRecord;
+  stateOptions: string[];
+  assigneeOptions: string[];
+  providerOptions: string[];
+  facilityOptions: string[];
+  tagOptions?: string[];
+  variant?: 'default' | 'visit-note';
+  onCommit: (field: string, from: string, to: string) => void;
+}) {
+  const notes = (
+    <div className="flex items-start gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 pt-1.5 text-sm leading-[22px] text-accent-700">Auth Notes</span>
+      <AuthNotesField
+        value={record.authNotes ?? ''}
+        onChange={(value) => onCommit('Auth Notes', record.authNotes ?? '', value)}
+      />
+    </div>
+  );
+  const confidence = (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">Confidence</span>
+      {record.confidence ? (
+        <div className="flex items-center gap-1">
+          <CheckCircle className="w-5 h-5 text-status-active" strokeWidth={1.5} />
+          <span className="text-sm leading-[22px] text-text-disabled">{record.confidence}</span>
+        </div>
+      ) : (
+        <span className="text-sm leading-[22px] text-text-disabled">--</span>
+      )}
+    </div>
+  );
+  const state = (
+    <div className="flex items-start gap-2 py-1">
+      <span className="w-[150px] shrink-0 text-sm leading-[22px] text-accent-700">State</span>
+      <EditableSelect
+        value={record.state}
+        onChange={(value) => onCommit('State', record.state, value)}
+        options={stateOptions}
+      />
+    </div>
+  );
+  const assigned = (
+    <EditableDetailRow
+      label="Assigned To"
+      value={record.assignedTo}
+      onChange={(v) => onCommit('Assigned To', record.assignedTo, v)}
+      options={assigneeOptions}
+    />
+  );
+  const provider = (
+    <EditableDetailRow
+      label="Provider"
+      value={record.provider}
+      onChange={(v) => onCommit('Provider', record.provider, v)}
+      options={providerOptions}
+    />
+  );
+  const facility = (
+    <EditableDetailRow
+      label="Facility"
+      value={record.facility}
+      onChange={(v) => onCommit('Facility', record.facility, v)}
+      options={facilityOptions}
+    />
+  );
+  const currentTag = record.tags[0] ?? '';
+  const tags = (
+    <EditableDetailRow
+      label="Tags"
+      value={currentTag}
+      placeholder="Tag Name"
+      options={tagOptions}
+      onChange={(v) => onCommit('Tags', currentTag, v)}
+    />
+  );
+
+  if (variant === 'visit-note') {
+    return (
+      <>
+        {provider}
+        {facility}
+        {notes}
+        {confidence}
+        {state}
+        {assigned}
+        {tags}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {notes}
+      {state}
+      {assigned}
+      {provider}
+      {facility}
+    </>
+  );
+}
+
+function cptRequestLine(order: NonNullable<AuthRecord['orderCpts']>[number]) {
+  const name = order.orderTitle.replace(/ \([^)]+ Order\)$/, '').trim();
+  const code = order.code.trim();
+  if (!code) return null;
+  return code.includes(' - ') ? code : `${code} - ${name}`;
+}
+
+/** Visit-note authorizations summarize the orders and CPT codes instead of the order form. */
+function AuthorizationRequestDetails({
+  orders,
+  onOpenVisitNote,
+}: {
+  orders: NonNullable<AuthRecord['orderCpts']>;
+  onOpenVisitNote: () => void;
+}) {
+  const cptLines = orders.flatMap((order) => {
+    const line = cptRequestLine(order);
+    return line ? [{ id: order.orderId, line }] : [];
+  });
+
+  return (
+    <div className="flex flex-col gap-2 pt-6">
+      <div className="flex items-center gap-2 pb-1.5">
+        <h3 className="text-base font-medium leading-6 text-text-primary">Authorization Request Details</h3>
+        <button
+          type="button"
+          onClick={onOpenVisitNote}
+          title="Link to visit note with order"
+          aria-label="Link to visit note with order"
+          className="flex size-7 items-center justify-center rounded-full text-text-primary hover:bg-surface-variant"
+        >
+          <ExternalLink className="size-5" strokeWidth={1.75} />
+        </button>
+      </div>
+      <div className="flex flex-col gap-4 text-sm leading-[22px] text-text-primary">
+        <div className="flex flex-col gap-2">
+          <p>A request for authorization has been created for the following orders:</p>
+          <ul className="list-disc pl-5">
+            {orders.map((order) => (
+              <li key={order.orderId} className="leading-[22px]">
+                {order.orderTitle}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p>With the following CPT codes:</p>
+          <ul className="list-disc pl-5">
+            {cptLines.map((entry) => (
+              <li key={entry.id} className="leading-[22px]">
+                {entry.line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CptTrackingBlock({
   entry,
   codeOptions = CPT_CODES,
@@ -1996,18 +2522,44 @@ function CptTrackingBlock({
   onDelete: () => void;
 }) {
   const unitLabel = entry.unitTrackingType || 'Units';
+  const selectedCodes = splitCptCodes(entry.code);
   return (
     <div className="flex gap-2.5 w-full pb-0.5 border-b border-outline last:border-b-0">
       <div className="w-0.5 self-stretch rounded-full bg-primary shrink-0" />
       <div className="flex-1 min-w-0 flex flex-col gap-2 py-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">CPT Code</span>
-          <CptFieldSelect
-            value={entry.code}
-            placeholder="Select a CPT code"
-            options={codeOptions}
-            onChange={(code) => onChange({ ...entry, code })}
-          />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <CptMultiSelect
+              values={selectedCodes}
+              placeholder="Select CPT codes"
+              options={codeOptions}
+              onChange={(codes) => onChange({ ...entry, code: joinCptCodes(codes) })}
+            />
+            {selectedCodes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCodes.map((code) => (
+                  <span
+                    key={code}
+                    className="inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 pl-2 pr-1 text-xs font-medium text-primary"
+                  >
+                    {code}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({ ...entry, code: joinCptCodes(selectedCodes.filter((c) => c !== code)) })
+                      }
+                      className="flex size-4 items-center justify-center rounded-sm hover:bg-primary/15"
+                      aria-label={`Remove ${code}`}
+                      title={`Remove ${code}`}
+                    >
+                      <X className="h-3 w-3" strokeWidth={2} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         {showOrderDetails ? (
           <div className="flex flex-col gap-2">

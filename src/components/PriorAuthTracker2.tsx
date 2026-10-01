@@ -11,6 +11,7 @@ import { applyFilters, EMPTY_FILTERS, isFiltersEmpty } from './FilterPanel';
 import type { Filters } from './FilterPanel';
 import BulkActions from './BulkActions';
 import AuthDetailPanel from './AuthDetailPanel';
+import { usePrototypeVersion } from '../prototypeVersion';
 import { OPEN_CREATE_AUTH_EVENT } from './CreateAuthDrawer';
 import type { AuthRecord, AuthState, TimelineEntry } from '../types';
 import { migrateAuthState } from '../types';
@@ -66,6 +67,13 @@ function StateChip({ state }: { state: string }) {
     >
       {state}
     </span>
+  );
+}
+
+function approvedUnitTotal(record: AuthRecord) {
+  return (record.approvedUnitEntries ?? []).reduce(
+    (sum, entry) => sum + (parseInt(entry.units, 10) || 0),
+    0,
   );
 }
 
@@ -592,6 +600,7 @@ export default function PriorAuthTracker2({
   registerNavigate,
   registerClearSelection,
 }: PriorAuthTracker2Props) {
+  const isP00 = usePrototypeVersion().version === 'P00';
   const [records, setRecords] = useState<AuthRecord[]>(mockAuthRecords);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -859,10 +868,22 @@ export default function PriorAuthTracker2({
           case 'Facility': updated.facility = to; break;
           case 'Start Date': updated.startDate = to; break;
           case 'End Date': updated.endDate = to; break;
-          case 'Payer': updated.payer = { ...r.payer, name: to }; break;
+          case 'Payer':
+          case 'Insurance': updated.payer = { ...r.payer, name: to }; break;
+          case 'Tags': updated.tags = to ? [to] : []; break;
           case 'State': updated.state = migrateAuthState(to); break;
           case 'Visits Authorized': updated.visitsAuthorized = parseInt(to, 10) || 0; break;
           case 'Auth Notes': updated.authNotes = to; break;
+          case 'Tracking Type':
+            if (to === 'Visits' || to === 'CPTs') updated.trackingMode = to;
+            break;
+          case 'Approved Units':
+            try {
+              updated.approvedUnitEntries = JSON.parse(to) as AuthRecord['approvedUnitEntries'];
+            } catch {
+              // Ignore a malformed units payload; the previous allowance stays in place.
+            }
+            break;
         }
         return updated;
       });
@@ -948,9 +969,21 @@ export default function PriorAuthTracker2({
   const allTags = useMemo(() => [...new Set(records.flatMap((r) => r.tags))].sort(), [records]);
 
   const isDetailOpen = !!selectedRecord;
-  const TABLE_COLUMNS = TABLE_COLUMNS_FULL.filter((col) =>
+  const visibleTableColumns = TABLE_COLUMNS_FULL.filter((col) =>
     'always' in col && col.always ? true : visibleColumns.has(col.key as DisplayColumn),
   );
+  const ordersColumn = { key: 'orders', label: 'Orders', width: 'w-[210px]' };
+  const labeledColumns = visibleTableColumns.map((col) =>
+    isP00 && col.key === 'utilization' ? { ...col, label: 'Utilization' } : col,
+  );
+  const utilizationVisible = labeledColumns.some((col) => col.key === 'utilization');
+  const TABLE_COLUMNS = isP00
+    ? labeledColumns.flatMap((col) => {
+        if (col.key === 'utilization') return [col, ordersColumn];
+        if (!utilizationVisible && col.key === 'end') return [col, ordersColumn];
+        return [col];
+      })
+    : labeledColumns;
 
   const isGrouped = grouping !== 'none';
   // Expand + checkbox columns, the visible data columns, and the sticky assignee column.
@@ -1424,8 +1457,14 @@ export default function PriorAuthTracker2({
                       {/* Utilization */}
                       {visibleColumns.has('utilization') && (
                       <td className="px-4 py-4 w-[210px]">
-                        {record.orderBased ? (
+                        {record.orderBased && !isP00 ? (
                           <OrderCptChips record={record} />
+                        ) : record.orderBased ? (
+                          <UtilizationBar
+                            authorized={approvedUnitTotal(record)}
+                            completed={record.serviceUnitsCompleted ?? 0}
+                            scheduled={record.serviceUnitsScheduled ?? 0}
+                          />
                         ) : (
                           <UtilizationBar
                             authorized={record.visitsAuthorized}
@@ -1433,6 +1472,12 @@ export default function PriorAuthTracker2({
                             scheduled={record.visitsScheduled}
                           />
                         )}
+                      </td>
+                      )}
+
+                      {isP00 && (
+                      <td className="px-4 py-4 w-[210px]">
+                        {record.orderBased ? <OrderCptChips record={record} /> : null}
                       </td>
                       )}
 
@@ -1464,11 +1509,14 @@ export default function PriorAuthTracker2({
                       {visibleColumns.has('tags') && (
                       <td className="px-4 py-4 w-[167px]">
                         <div className="flex items-center gap-1 flex-wrap">
-                          {record.tags.length > 0 ? (
-                            <span className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap">
-                              WC AUTHORIZATION
+                          {record.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-2 h-7 rounded-lg bg-outline text-[12px] font-medium leading-[18px] text-text-primary whitespace-nowrap"
+                            >
+                              {tag}
                             </span>
-                          ) : null}
+                          ))}
                         </div>
                       </td>
                       )}
