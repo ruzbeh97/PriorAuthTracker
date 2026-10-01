@@ -610,6 +610,7 @@ export default function AuthDetailPanel({ record, allRecords, onClose, onReassig
                         key={entry.id}
                         entry={entry}
                         codeOptions={orderCptOptions}
+                        codePicker
                         onChange={(next) =>
                           replaceCptEntries(cptEntries.map((e) => (e.id === entry.id ? next : e)))
                         }
@@ -2271,6 +2272,148 @@ function CptMultiSelect({
   );
 }
 
+/**
+ * Three stages: an idle "+" to start picking, a focused search with checkbox options while
+ * picking, then "Clear +" with removable code chips once something is selected.
+ */
+function CptCodePicker({
+  values,
+  options,
+  onChange,
+}: {
+  values: string[];
+  options: CptSelectOption[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const q = search.toLowerCase();
+  const filtered = options.filter(
+    (o) => o.value.toLowerCase().includes(q) || (o.description?.toLowerCase().includes(q) ?? false),
+  );
+  const selected = new Set(values);
+
+  function toggle(code: string) {
+    onChange(selected.has(code) ? values.filter((value) => value !== code) : [...values, code]);
+  }
+
+  return (
+    <div ref={ref} className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-h-[22px] items-center justify-end gap-3">
+        {open ? (
+          <div className="relative min-w-0 flex-1">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setOpen(false);
+                  setSearch('');
+                }
+              }}
+              aria-label="Search CPT codes"
+              className="h-8 w-full rounded-md border-2 border-primary bg-white px-2 text-sm text-text-primary focus:outline-none"
+            />
+            <div
+              role="listbox"
+              aria-multiselectable
+              className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-outline bg-white shadow-lg"
+            >
+              <div className="max-h-[200px] overflow-y-auto py-1">
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-1.5 text-xs text-text-secondary">No matches</div>
+                ) : (
+                  filtered.map((opt) => {
+                    const isSelected = selected.has(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => toggle(opt.value)}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-text-primary transition-colors hover:bg-surface-variant"
+                      >
+                        <span
+                          className={`flex size-4 shrink-0 items-center justify-center rounded-sm border ${
+                            isSelected ? 'border-primary bg-primary text-white' : 'border-[#8a8a8a] bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" strokeWidth={2.5} />}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {opt.description ? `${opt.value} - ${opt.description}` : opt.value}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {values.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-sm leading-[22px] text-primary hover:underline"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="flex size-[22px] items-center justify-center text-primary hover:text-primary-hover transition-colors"
+              title="Add CPT code"
+              aria-label="Add CPT code"
+            >
+              <Plus className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          </>
+        )}
+      </div>
+      {values.length > 0 && (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {values.map((code) => (
+            <span
+              key={code}
+              className="inline-flex h-6 items-center gap-1 rounded-md border border-[#dcdcdc] bg-[#f2f2f2] pl-2 pr-1 text-xs font-medium text-text-primary"
+            >
+              {code}
+              <button
+                type="button"
+                onClick={() => onChange(values.filter((c) => c !== code))}
+                className="flex size-4 items-center justify-center rounded-sm hover:bg-black/10"
+                aria-label={`Remove ${code}`}
+                title={`Remove ${code}`}
+              >
+                <X className="h-3 w-3" strokeWidth={2} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TrackingTypeField({
   value,
   onChange,
@@ -2512,12 +2655,15 @@ function CptTrackingBlock({
   entry,
   codeOptions = CPT_CODES,
   showOrderDetails = false,
+  codePicker = false,
   onChange,
   onDelete,
 }: {
   entry: CptEntry;
   codeOptions?: CptSelectOption[];
   showOrderDetails?: boolean;
+  /** Use the staged "+ / search / Clear + chips" picker instead of the dropdown. */
+  codePicker?: boolean;
   onChange: (next: CptEntry) => void;
   onDelete: () => void;
 }) {
@@ -2528,7 +2674,16 @@ function CptTrackingBlock({
       <div className="w-0.5 self-stretch rounded-full bg-primary shrink-0" />
       <div className="flex-1 min-w-0 flex flex-col gap-2 py-4">
         <div className="flex items-start gap-4">
-          <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">CPT Code</span>
+          <span className="w-40 shrink-0 text-sm leading-[22px] text-accent-700">
+            {codePicker ? 'CPT Codes' : 'CPT Code'}
+          </span>
+          {codePicker ? (
+            <CptCodePicker
+              values={selectedCodes}
+              options={codeOptions}
+              onChange={(codes) => onChange({ ...entry, code: joinCptCodes(codes) })}
+            />
+          ) : (
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <CptMultiSelect
               values={selectedCodes}
@@ -2560,6 +2715,7 @@ function CptTrackingBlock({
               </div>
             )}
           </div>
+          )}
         </div>
         {showOrderDetails ? (
           <div className="flex flex-col gap-2">
